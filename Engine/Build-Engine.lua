@@ -1,19 +1,30 @@
-project "Core"
+project "Engine"
    kind "StaticLib"
    language "C++"
    cppdialect "C++20"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp" }
+   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp" }
+
+   local vulkanSDKPath = os.getenv("VULKAN_SDK")
+   
+   defines 
+   {
+        "GLFW_INCLUDE_VULKAN"
+   }
+
+   links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW" }
 
    includedirs
    {
-      "Source"
+      "Source",
+      vulkanSDKPath .. "/Include",
+      "Vendor/glfw/include"
    }
 
-   targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
-   objdir ("../Binaries/Intermediates/" .. OutputDir .. "/%{prj.name}")
+   targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
+   objdir ("../Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
 
    filter "system:windows"
        systemversion "latest"

@@ -1,4 +1,4 @@
-project "App"
+project "Game"
    kind "ConsoleApp"
    language "C++"
    cppdialect "C++20"
@@ -10,18 +10,19 @@ project "App"
    includedirs
    {
       "Source",
-
 	  -- Include Core
-	  "../Core/Source"
+	  "../Engine/Source",
+	  os.getenv("VULKAN_SDK") .. "/Include",
+	  "../Engine/Vendor/glfw/include"
    }
 
    links
    {
-      "Core"
+      "Engine"
    }
 
-   targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
-   objdir ("../Binaries/Intermediates/" .. OutputDir .. "/%{prj.name}")
+   targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
+   objdir ("../Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
 
    filter "system:windows"
        systemversion "latest"

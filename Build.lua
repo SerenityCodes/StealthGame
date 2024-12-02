@@ -1,17 +1,22 @@
 -- premake5.lua
-workspace "New Project"
+workspace "Stealth Game"
    architecture "x64"
    configurations { "Debug", "Release", "Dist" }
-   startproject "App"
+   startproject "Game"
 
    -- Workspace-wide build options for MSVC
    filter "system:windows"
       buildoptions { "/EHsc", "/Zc:preprocessor", "/Zc:__cplusplus" }
 
-OutputDir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
+outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
-group "Core"
-	include "Core/Build-Core.lua"
+group "Dependencies"
+    include "Engine/Vendor/glfw"
 group ""
 
-include "App/Build-App.lua"
+group "Engine"
+	include "Engine/Build-Engine.lua"
+group ""
+
+include "Dependencies.lua"
+include "Game/Build-Game.lua"
