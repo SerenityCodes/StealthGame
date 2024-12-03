@@ -89,10 +89,13 @@ DeviceWrapper::DeviceWrapper(VkSurfaceKHR surface, VkInstance instance, const Dy
         create_info.pNext = nullptr;
         create_infos = &create_info;
     }
+
+    const char* enabled_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     
     VkDeviceCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    create_info.enabledExtensionCount = 0;
+    create_info.enabledExtensionCount = 1;
+    create_info.ppEnabledExtensionNames = enabled_extensions;
     create_info.queueCreateInfoCount = queue_create_count;
     create_info.pQueueCreateInfos = create_infos;
     create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.get_size());

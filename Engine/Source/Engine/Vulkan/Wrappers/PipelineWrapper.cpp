@@ -5,13 +5,16 @@
 #include "Engine/Engine.h"
 #include <glslang/Include/glslang_c_interface.h>
 
+#include <filesystem>
+#include <iostream>
+
 namespace engine::vulkan {
 
 
 PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) : m_device_(device), m_swap_chain_(swap_chain),
     m_pipeline_layout_(nullptr), m_render_pass_(create_render_pass()), m_pipeline_(nullptr) {
-    DynArray<char> vertex_shader_source = StealthEngine::read_file("Engine/Shaders/triangle.vert.spv");
-    DynArray<char> fragment_shader_source = StealthEngine::read_file("Engine/Shaders/triangle.frag.spv");
+    DynArray<char> vertex_shader_source = StealthEngine::read_file("C:/Users/LyftDriver/Projects/StealthEngine/Engine/Shaders/triangle.vert.spv");
+    DynArray<char> fragment_shader_source = StealthEngine::read_file("C:/Users/LyftDriver/Projects/StealthEngine/Engine/Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
@@ -59,6 +62,7 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     scissor.extent = m_swap_chain_->get_swap_chain_extent();
 
     VkPipelineViewportStateCreateInfo viewport_state_create_info{};
+    viewport_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport_state_create_info.viewportCount = 1;
     viewport_state_create_info.scissorCount = 1;
 
@@ -139,6 +143,7 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline!");
     }
+    create_frame_buffers();
 }
 
 PipelineWrapper::~PipelineWrapper() {
@@ -172,12 +177,22 @@ VkRenderPass PipelineWrapper::create_render_pass() const {
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
 
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
     VkRenderPassCreateInfo render_pass_create_info{};
     render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     render_pass_create_info.attachmentCount = 1;
     render_pass_create_info.pAttachments = &color_attachment;
     render_pass_create_info.subpassCount = 1;
     render_pass_create_info.pSubpasses = &subpass;
+    render_pass_create_info.dependencyCount = 1;
+    render_pass_create_info.pDependencies = &dependency;
 
     VkRenderPass render_pass = VK_NULL_HANDLE;
     if (vkCreateRenderPass(*m_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {

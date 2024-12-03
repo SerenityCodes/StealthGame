@@ -19,6 +19,8 @@ class VulkanWrapper {
     SwapChain m_swap_chain_;
     PipelineWrapper m_pipeline_;
     CommandBufferWrapper m_command_buffer_;
+
+    uint32_t m_current_frame_ = 0;
 public:
     VulkanWrapper();
     VulkanWrapper(const VulkanWrapper&) = delete;
