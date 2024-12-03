@@ -7,7 +7,7 @@
 
 namespace engine::vulkan {
 
-CommandBufferWrapper::CommandBufferWrapper(DeviceWrapper* device, PipelineWrapper* pipeline, SwapChain* swap_chain, uint32_t graphics_queue_family) : m_device_(device), m_pipeline_(pipeline), m_swap_chain_(swap_chain) {
+CommandBufferWrapper::CommandBufferWrapper(Window* window, DeviceWrapper* device, PipelineWrapper* pipeline, SwapChain* swap_chain, uint32_t graphics_queue_family) : m_window_(window), m_device_(device), m_pipeline_(pipeline), m_swap_chain_(swap_chain) {
     VkCommandPoolCreateInfo command_pool_create_info{};
     command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     command_pool_create_info.queueFamilyIndex = graphics_queue_family;
@@ -71,7 +71,7 @@ void CommandBufferWrapper::record_command_buffer(VkRenderPass render_pass, uint3
     VkRenderPassBeginInfo render_pass_info{};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = render_pass;
-    render_pass_info.framebuffer = m_pipeline_->get_frame_buffer(image_index);
+    render_pass_info.framebuffer = m_swap_chain_->get_frame_buffer(image_index);
     render_pass_info.renderArea = {{0, 0}, m_swap_chain_->get_swap_chain_extent()};
 
     VkClearValue clear_value = {{{0.0, 0.0, 0.0, 1.0}}};
@@ -126,7 +126,7 @@ void CommandBufferWrapper::submit_command_buffer(uint32_t current_frame) const {
     }
 }
 
-void CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32_t image_index) const {
+bool CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32_t image_index) const {
     VkSemaphore wait_semaphores[] = {m_render_finished_semaphores_[current_frame]};
     VkPresentInfoKHR present_info{};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -139,9 +139,17 @@ void CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
-    if (vkQueuePresentKHR(m_device_->get_present_queue(), &present_info) != VK_SUCCESS) {
+    if (auto res = vkQueuePresentKHR(m_device_->get_present_queue(), &present_info); res != VK_SUCCESS) {
+        if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+            return true;
+        }
         throw std::runtime_error("Failed to present swap chain");
     }
+    return false;
+}
+
+void CommandBufferWrapper::reset_swap_chain_ptr(SwapChain* swap_chain) {
+    m_swap_chain_ = swap_chain;
 }
 
 VkSemaphore CommandBufferWrapper::get_image_available_semaphore(uint32_t current_frame) const {

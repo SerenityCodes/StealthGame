@@ -13,17 +13,21 @@ void operator delete(void* p) {
     free(p);
 }
 
-namespace engine {
-
-void print_hello_world() {
-    std::cout << "Hello World!\n";
-    std::cin.get();
+void* operator new[](size_t size) {
+    std::cout << "Allocated " << std::dec << size << " bytes\n";
+    return malloc(size);
 }
+
+void operator delete[](void* p) {
+    free(p);
+}
+
+namespace engine {
 
 constexpr int default_stack_size = 2 << 20;
 
 StealthEngine::StealthEngine() : frame_allocator_(default_stack_size),
-                                 m_vulkan_wrapper_() {}
+                                 m_vulkan_wrapper_() { }
 
 StealthEngine::~StealthEngine() {}
 

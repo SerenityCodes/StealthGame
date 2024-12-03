@@ -13,7 +13,17 @@ SwapChain::SwapChain(GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* de
 }
 
 SwapChain::~SwapChain() {
-    for (const auto& image_view : m_swap_chain_image_views_) {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(m_window_, &width, &height);
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(m_window_, &width, &height);
+        glfwWaitEvents();
+    }
+    vkDeviceWaitIdle(*m_device_);
+    for (const auto& frame_buffer : m_frame_buffers_) {
+        vkDestroyFramebuffer(m_device_->get_logical_device(), frame_buffer, nullptr);
+    }
+    for (const auto& image_view : m_image_views_) {
         vkDestroyImageView(m_device_->get_logical_device(), image_view, nullptr);
     }
     vkDestroySwapchainKHR(m_device_->get_logical_device(), m_swap_chain_, nullptr);
@@ -66,17 +76,17 @@ void SwapChain::create_swap_chain() {
 void SwapChain::create_swap_chain_images() {
     uint32_t image_count = 0;
     vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &image_count, nullptr);
-    m_swap_chain_images_.resize(image_count);
-    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &image_count, m_swap_chain_images_.data());
+    m_images_.resize(image_count);
+    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &image_count, m_images_.data());
 }
 
 void SwapChain::create_swap_chain_image_views() {
-    m_swap_chain_image_views_.resize(m_swap_chain_images_.get_size());
+    m_image_views_.resize(m_images_.get_size());
 
-    for (uint32_t i = 0; i < m_swap_chain_images_.get_size(); i++) {
+    for (uint32_t i = 0; i < m_images_.get_size(); i++) {
         VkImageViewCreateInfo image_view_create_info{};
         image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        image_view_create_info.image = m_swap_chain_images_[i];
+        image_view_create_info.image = m_images_[i];
         image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
         image_view_create_info.format = m_swap_chain_format_;
         image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -89,18 +99,38 @@ void SwapChain::create_swap_chain_image_views() {
         image_view_create_info.subresourceRange.baseArrayLayer = 0;
         image_view_create_info.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(m_device_->get_logical_device(), &image_view_create_info, nullptr, &m_swap_chain_image_views_[i]) != VK_SUCCESS) {
+        if (vkCreateImageView(m_device_->get_logical_device(), &image_view_create_info, nullptr, &m_image_views_[i]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create swap chain image view!");
         }
     }
 }
 
+void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
+    m_frame_buffers_.resize(m_image_views_.get_size());
+    for (uint32_t i = 0; i < m_frame_buffers_.get_size(); i++) {
+        VkImageView attachments[] = {m_image_views_[i]};
+        
+        VkFramebufferCreateInfo framebuffer_create_info{};
+        framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_create_info.renderPass = render_pass;
+        framebuffer_create_info.attachmentCount = 1;
+        framebuffer_create_info.pAttachments = attachments;
+        framebuffer_create_info.width = m_swap_chain_extent_.width;
+        framebuffer_create_info.height = m_swap_chain_extent_.height;
+        framebuffer_create_info.layers = 1;
+
+        if (vkCreateFramebuffer(*m_device_, &framebuffer_create_info, nullptr, &m_frame_buffers_[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create framebuffer!");
+        }
+    }
+}
+
 size_t SwapChain::get_image_views_count() const {
-    return m_swap_chain_images_.get_size();
+    return m_images_.get_size();
 }
 
 const DynArray<VkImageView>& SwapChain::get_image_views() const {
-    return m_swap_chain_image_views_;
+    return m_image_views_;
 }
 
 VkExtent2D SwapChain::get_swap_chain_extent() const {
@@ -109,6 +139,10 @@ VkExtent2D SwapChain::get_swap_chain_extent() const {
 
 VkFormat SwapChain::get_swap_chain_format() const {
     return m_swap_chain_format_;
+}
+
+VkFramebuffer SwapChain::get_frame_buffer(uint32_t index) const {
+    return m_frame_buffers_[index];
 }
 
 SwapChain::operator VkSwapchainKHR() const {

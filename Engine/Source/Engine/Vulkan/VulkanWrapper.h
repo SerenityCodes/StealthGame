@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <vulkan/vulkan.h>
+#include <memory>
 
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
@@ -16,7 +16,7 @@ class VulkanWrapper {
     InstanceWrapper m_instance_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
-    SwapChain m_swap_chain_;
+    std::unique_ptr<SwapChain> m_swap_chain_;
     PipelineWrapper m_pipeline_;
     CommandBufferWrapper m_command_buffer_;
 
@@ -32,6 +32,7 @@ public:
     Window& window();
 
     void draw_frame();
+    void reset_swap_chain();
 };
 
 }

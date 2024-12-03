@@ -3,16 +3,13 @@
 #include <stdexcept>
 
 #include "Engine/Engine.h"
-#include <glslang/Include/glslang_c_interface.h>
-
-#include <filesystem>
-#include <iostream>
 
 namespace engine::vulkan {
 
 
 PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) : m_device_(device), m_swap_chain_(swap_chain),
     m_pipeline_layout_(nullptr), m_render_pass_(create_render_pass()), m_pipeline_(nullptr) {
+    m_swap_chain_->create_frame_buffers(m_render_pass_);
     DynArray<char> vertex_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.vert.spv");
     DynArray<char> fragment_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
@@ -143,13 +140,9 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline!");
     }
-    create_frame_buffers();
 }
 
 PipelineWrapper::~PipelineWrapper() {
-    for (const auto& frame_buffer : m_frame_buffers_) {
-        vkDestroyFramebuffer(*m_device_, frame_buffer, nullptr);
-    }
     vkDestroyShaderModule(*m_device_, m_vertex_shader_, nullptr);
     vkDestroyShaderModule(*m_device_, m_fragment_shader_, nullptr);
     vkDestroyRenderPass(*m_device_, m_render_pass_, nullptr);
@@ -201,27 +194,6 @@ VkRenderPass PipelineWrapper::create_render_pass() const {
     return render_pass;
 }
 
-void PipelineWrapper::create_frame_buffers() {
-    m_frame_buffers_.resize(m_swap_chain_->get_image_views_count());
-    for (uint32_t i = 0; i < m_frame_buffers_.get_size(); i++) {
-        VkImageView attachments[] = {m_swap_chain_->get_image_views()[i]};
-        
-        VkFramebufferCreateInfo framebuffer_create_info{};
-        framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebuffer_create_info.renderPass = m_render_pass_;
-        framebuffer_create_info.attachmentCount = 1;
-        framebuffer_create_info.pAttachments = attachments;
-        framebuffer_create_info.width = m_swap_chain_->get_swap_chain_extent().width;
-        framebuffer_create_info.height = m_swap_chain_->get_swap_chain_extent().height;
-        framebuffer_create_info.layers = 1;
-
-        if (vkCreateFramebuffer(*m_device_, &framebuffer_create_info, nullptr, &m_frame_buffers_[i]) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create framebuffer!");
-        }
-    }
-    
-}
-
 VkPipelineLayout PipelineWrapper::get_pipeline_layout() const {
     return m_pipeline_layout_;
 }
@@ -242,8 +214,9 @@ VkRenderPass PipelineWrapper::get_render_pass() const {
     return m_render_pass_;
 }
 
-VkFramebuffer PipelineWrapper::get_frame_buffer(int index) const {
-    return m_frame_buffers_[index];
+void PipelineWrapper::set_new_swap_chain_ptr(SwapChain* swap_chain) {
+    m_swap_chain_ = swap_chain;
+    swap_chain->create_frame_buffers(m_render_pass_);
 }
 
 VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const DynArray<char>& code) {

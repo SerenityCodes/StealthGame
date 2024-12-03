@@ -19,9 +19,9 @@ private:
     SupportDetails m_support_details_;
     VkSwapchainKHR m_swap_chain_;
     
-    DynArray<VkImage> m_swap_chain_images_;
-    DynArray<VkImageView> m_swap_chain_image_views_;
-    DynArray<VkFramebuffer> m_swap_chain_frame_buffers_;
+    DynArray<VkImage> m_images_;
+    DynArray<VkImageView> m_image_views_;
+    DynArray<VkFramebuffer> m_frame_buffers_;
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
@@ -31,11 +31,13 @@ public:
     void create_swap_chain();
     void create_swap_chain_images();
     void create_swap_chain_image_views();
+    void create_frame_buffers(VkRenderPass render_pass);
     size_t get_image_views_count() const;
     const DynArray<VkImageView>& get_image_views() const;
 
     VkExtent2D get_swap_chain_extent() const;
     VkFormat get_swap_chain_format() const;
+    VkFramebuffer get_frame_buffer(uint32_t index) const;
 
     operator VkSwapchainKHR() const;
     SupportDetails get_support_details() const;

@@ -16,14 +16,11 @@ class PipelineWrapper {
     VkPipelineLayout m_pipeline_layout_;
     VkRenderPass m_render_pass_;
     VkPipeline m_pipeline_;
-
-    DynArray<VkFramebuffer> m_frame_buffers_;
 public:
     PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device);
     ~PipelineWrapper();
 
     VkRenderPass create_render_pass() const;
-    void create_frame_buffers();
 
     VkPipelineLayout get_pipeline_layout() const;
     VkPipeline get_pipeline() const;
@@ -31,7 +28,7 @@ public:
     VkShaderModule get_fragment_shader() const;
     VkRenderPass get_render_pass() const;
 
-    VkFramebuffer get_frame_buffer(int index) const;
+    void set_new_swap_chain_ptr(SwapChain* swap_chain);
 
     static VkShaderModule create_shader_module(VkDevice device, const DynArray<char>& code);
 };
