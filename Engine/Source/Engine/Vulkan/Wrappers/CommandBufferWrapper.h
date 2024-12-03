@@ -32,9 +32,7 @@ public:
     [[nodiscard]] bool present_command_buffer(uint32_t current_frame, uint32_t image_index) const;
 
     void reset_swap_chain_ptr(SwapChain* swap_chain);
-
-    [[nodiscard]] const VkCommandBuffer* get_command_buffer_ptr() const;
-
+    
     VkSemaphore get_image_available_semaphore(uint32_t current_frame) const;
     VkSemaphore get_render_finished_semaphore(uint32_t current_frame) const;
     VkFence get_in_flight_fence(uint32_t current_frame) const;
