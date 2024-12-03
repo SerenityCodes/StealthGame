@@ -6,10 +6,6 @@
 
 namespace engine::vulkan {
 
-class DeviceWrapper;       // Forward declaration
-class PipelineWrapper;     // Forward declaration
-class SwapChain;           // Forward declaration
-
 class CommandBufferWrapper {
 public:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;

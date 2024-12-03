@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "Wrappers/CommandBufferWrapper.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
 #include "Wrappers/PipelineWrapper.h"

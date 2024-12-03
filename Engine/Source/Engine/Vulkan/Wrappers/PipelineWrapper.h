@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CommandBufferWrapper.h"
 #include "DeviceWrapper.h"
 #include "SwapChain.h"
 
