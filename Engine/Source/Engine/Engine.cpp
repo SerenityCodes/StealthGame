@@ -9,7 +9,7 @@ void* operator new(size_t size) {
 }
 
 void operator delete(void* p) {
-    std::cout << "Deleted 0x" << std::hex << p << "\n";
+    //std::cout << "Deleted 0x" << std::hex << p << "\n";
     free(p);
 }
 

@@ -13,8 +13,8 @@ namespace engine::vulkan {
 
 PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) : m_device_(device), m_swap_chain_(swap_chain),
     m_pipeline_layout_(nullptr), m_render_pass_(create_render_pass()), m_pipeline_(nullptr) {
-    DynArray<char> vertex_shader_source = StealthEngine::read_file("C:/Users/LyftDriver/Projects/StealthEngine/Engine/Shaders/triangle.vert.spv");
-    DynArray<char> fragment_shader_source = StealthEngine::read_file("C:/Users/LyftDriver/Projects/StealthEngine/Engine/Shaders/triangle.frag.spv");
+    DynArray<char> vertex_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.vert.spv");
+    DynArray<char> fragment_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
