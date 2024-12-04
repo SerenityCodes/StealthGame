@@ -7,9 +7,8 @@
 namespace engine::vulkan {
 
 
-PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) : m_device_(device), m_swap_chain_(swap_chain),
-    m_pipeline_layout_(nullptr), m_render_pass_(create_render_pass()), m_pipeline_(nullptr) {
-    m_swap_chain_->create_frame_buffers(m_render_pass_);
+PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
+    m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
     DynArray<char> vertex_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.vert.spv");
     DynArray<char> fragment_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
@@ -32,7 +31,7 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     VkPipelineDynamicStateCreateInfo dynamic_state_create_info{};
     dynamic_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_state_create_info.dynamicStateCount = 2;
-    dynamic_state_create_info.pDynamicStates = DYNAMIC_STATES;
+    dynamic_state_create_info.pDynamicStates = dynamic_states;
 
     VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info{};
     vertex_input_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -49,14 +48,14 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_swap_chain_->get_swap_chain_extent().width);
-    viewport.height = static_cast<float>(m_swap_chain_->get_swap_chain_extent().height);
+    viewport.width = static_cast<float>(renderer->get_swap_chain_extent().width);
+    viewport.height = static_cast<float>(renderer->get_swap_chain_extent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = m_swap_chain_->get_swap_chain_extent();
+    scissor.extent = renderer->get_swap_chain_extent();
 
     VkPipelineViewportStateCreateInfo viewport_state_create_info{};
     viewport_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -131,7 +130,7 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
     pipeline_create_info.pDynamicState = &dynamic_state_create_info;
     pipeline_create_info.pDepthStencilState = nullptr;
     pipeline_create_info.layout = m_pipeline_layout_;
-    pipeline_create_info.renderPass = m_render_pass_;
+    pipeline_create_info.renderPass = renderer->get_render_pass();
     pipeline_create_info.subpass = 0;
     
     pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -143,55 +142,11 @@ PipelineWrapper::PipelineWrapper(SwapChain* swap_chain, DeviceWrapper* device) :
 }
 
 PipelineWrapper::~PipelineWrapper() {
+    vkDeviceWaitIdle(*m_device_);
     vkDestroyShaderModule(*m_device_, m_vertex_shader_, nullptr);
     vkDestroyShaderModule(*m_device_, m_fragment_shader_, nullptr);
-    vkDestroyRenderPass(*m_device_, m_render_pass_, nullptr);
-    vkDestroyPipeline(*m_device_, m_pipeline_, nullptr);
     vkDestroyPipelineLayout(*m_device_, m_pipeline_layout_, nullptr);
-}
-
-VkRenderPass PipelineWrapper::create_render_pass() const {
-    VkAttachmentDescription color_attachment{};
-    color_attachment.format = m_swap_chain_->get_swap_chain_format();
-    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    VkAttachmentReference color_attachment_ref{};
-    color_attachment_ref.attachment = 0;
-    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &color_attachment_ref;
-
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    VkRenderPassCreateInfo render_pass_create_info{};
-    render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    render_pass_create_info.attachmentCount = 1;
-    render_pass_create_info.pAttachments = &color_attachment;
-    render_pass_create_info.subpassCount = 1;
-    render_pass_create_info.pSubpasses = &subpass;
-    render_pass_create_info.dependencyCount = 1;
-    render_pass_create_info.pDependencies = &dependency;
-
-    VkRenderPass render_pass = VK_NULL_HANDLE;
-    if (vkCreateRenderPass(*m_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create render pass!");
-    }
-    return render_pass;
+    vkDestroyPipeline(*m_device_, m_pipeline_, nullptr);
 }
 
 VkPipelineLayout PipelineWrapper::get_pipeline_layout() const {
@@ -210,13 +165,12 @@ VkShaderModule PipelineWrapper::get_fragment_shader() const {
     return m_fragment_shader_;
 }
 
-VkRenderPass PipelineWrapper::get_render_pass() const {
-    return m_render_pass_;
+void PipelineWrapper::bind(VkCommandBuffer command_buffer) {
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_);
 }
 
-void PipelineWrapper::set_new_swap_chain_ptr(SwapChain* swap_chain) {
-    m_swap_chain_ = swap_chain;
-    swap_chain->create_frame_buffers(m_render_pass_);
+void PipelineWrapper::draw(VkCommandBuffer command_buffer) {
+    vkCmdDraw(command_buffer, 3, 1, 0, 0);
 }
 
 VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const DynArray<char>& code) {

@@ -1,17 +1,17 @@
 ﻿#pragma once
 
-#ifndef DYNARRAY_H
-#define DYNARRAY_H
-
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 
+#include "Engine/Allocators/StackAllocator.h"
+
 template <typename T>
 class DynArray {
-    size_t size;
-    T* data_ptr;
+    size_t m_size_;
+    T* m_data_ptr_;
 
 public:
     class iterator {
@@ -28,7 +28,7 @@ public:
         iterator(const DynArray* array, const size_t pos) : current_pos(pos), array(array) {}
 
         reference operator*() const {
-            return array->data_ptr[current_pos];
+            return array->m_data_ptr_[current_pos];
         }
 
         iterator& operator++() {
@@ -84,7 +84,7 @@ public:
         explicit const_iterator(const DynArray* array, const size_t pos) : current_pos(pos), array(array) {}
 
         reference operator*() const {
-            return array->data_ptr[current_pos];
+            return array->m_data_ptr_[current_pos];
         }
 
         const_iterator& operator++() {
@@ -129,6 +129,7 @@ public:
     void resize(size_t size);
     [[nodiscard]] size_t get_size() const;
     T* data() const;
+    void clear();
 
     T& operator[](size_t index) const;
     T& operator[](size_t index);
@@ -144,45 +145,45 @@ public:
 
 template<typename T>
 DynArray<T>::DynArray() {
-    size = 0;
-    data_ptr = nullptr;
+    m_size_ = 0;
+    m_data_ptr_ = nullptr;
 }
 
 template<typename T>
 DynArray<T>::DynArray(size_t size) {
-    this->size = size;
-    data_ptr = new T[size];
+    m_size_ = size;
+    m_data_ptr_ = new T[m_size_];
 }
 
 template <typename T>
 DynArray<T>::DynArray(std::initializer_list<T> init) {
-    this->size = init.size();
-    data_ptr = new T[size];
-    std::copy(init.begin(), init.end(), data_ptr);
+    m_size_ = init.size();
+    m_data_ptr_ = new T[init.size()];
+    std::copy(init.begin(), init.end(), m_data_ptr_);
 }
 
 template <typename T>
 template <typename It>
 DynArray<T>::DynArray(It begin, It end) {
-    this->size = std::distance(begin, end);
-    data_ptr = new T[this->size];
-    std::copy(begin, end, data_ptr);
+    m_size_ = std::distance(begin, end);
+    m_data_ptr_ = new T[m_size_];
+    std::copy(begin, end, m_data_ptr_);
 }
 
 template<typename T>
 DynArray<T>::DynArray(const DynArray &other) noexcept {
-    this->size = other.size;
-    this->data_ptr = new T[size];
-    std::copy(other.begin(), other.end(), data_ptr);
+    m_size_ = other.m_size_;
+    m_data_ptr_ = new T[other.m_size_];
+    std::copy(other.begin(), other.end(), m_data_ptr_);
 }
 
 template<typename T>
 DynArray<T>& DynArray<T>::operator=(const DynArray& other) noexcept {
     if (this != &other) {
-        delete[] data_ptr;
-        this->size = other.size;
-        this->data_ptr = new T[size];
-        memcpy(this->data_ptr, other.data_ptr, this->size * sizeof(T));
+        delete[] m_data_ptr_;
+        m_size_ = other.m_size_;
+        m_data_ptr_ = new T[m_size_];
+        std::copy(other.begin(), other.end(), m_data_ptr_);
         return *this;
     }
     return *this;
@@ -190,60 +191,67 @@ DynArray<T>& DynArray<T>::operator=(const DynArray& other) noexcept {
 
 template<typename T>
 DynArray<T>::DynArray(DynArray&& other) noexcept {
-    this->size = other.size;
-    this->data_ptr = other.data_ptr;
-    other.data_ptr = nullptr;
+    m_size_ = other.m_size_;
+    this->m_data_ptr_ = other.m_data_ptr_;
+    other.m_data_ptr_ = nullptr;
 }
 
 template <typename T>
 DynArray<T>& DynArray<T>::operator=(DynArray&& other) noexcept {
     if (this != &other) {
-        delete[] data_ptr;
-        this->size = other.size;
-        this->data_ptr = other.data_ptr;
-        other.data_ptr = nullptr;
+        delete[] m_data_ptr_;
+        this->m_size_ = other.m_size_;
+        this->m_data_ptr_ = other.m_data_ptr_;
+        other.m_data_ptr_ = nullptr;
     }
     return *this;
 }
 
 template<typename T>
 DynArray<T>::~DynArray() {
-    delete[] data_ptr;
+    delete[] m_data_ptr_;
 }
 
 template<typename T>
 bool DynArray<T>::is_empty() const {
-    return size == 0;
+    return m_size_ == 0;
 }
 
 template<typename T>
 void DynArray<T>::resize(const size_t size) {
     T* new_data = new T[size];
-    const T* old_data = data_ptr;
+    const T* old_data = m_data_ptr_;
     std::copy(begin(), end(), new_data);
-    data_ptr = new_data;
-    this->size = size;
+    m_data_ptr_ = new_data;
+    this->m_size_ = size;
     delete[] old_data;
 }
 
 template<typename T>
 size_t DynArray<T>::get_size() const {
-    return size;
+    return m_size_;
 }
 
 template<typename T>
 T* DynArray<T>::data() const {
-    return data_ptr;
+    return m_data_ptr_;
+}
+
+template <typename T>
+void DynArray<T>::clear() {
+    delete[] m_data_ptr_;
+    m_data_ptr_ = nullptr;
+    m_size_ = 0;
 }
 
 template<typename T>
 T& DynArray<T>::operator[](size_t index) const {
-    return data_ptr[index];
+    return m_data_ptr_[index];
 }
 
 template<typename T>
 T& DynArray<T>::operator[](size_t index) {
-    return data_ptr[index];
+    return m_data_ptr_[index];
 }
 
 template<typename T>
@@ -258,12 +266,12 @@ typename DynArray<T>::const_iterator DynArray<T>::begin() const {
 
 template<typename T>
 typename DynArray<T>::iterator DynArray<T>::end() {
-    return DynArray::iterator(this, size);
+    return DynArray::iterator(this, m_size_);
 }
 
 template <typename T>
 typename DynArray<T>::const_iterator DynArray<T>::end() const {
-    return DynArray::const_iterator(this, size);
+    return DynArray::const_iterator(this, m_size_);
 }
 
 template<typename T>
@@ -273,9 +281,5 @@ typename DynArray<T>::const_iterator DynArray<T>::cbegin() const {
 
 template<typename T>
 typename DynArray<T>::const_iterator DynArray<T>::cend() const {
-    return DynArray::const_iterator(this, size);
+    return DynArray::const_iterator(this, m_size_);
 }
-
-
-#endif
-

@@ -11,9 +11,11 @@ namespace engine {
 	class StealthEngine {
 	    allocators::StackAllocator frame_allocator_;
 	    vulkan::VulkanWrapper m_vulkan_wrapper_;
+	    vulkan::BasicRenderer m_renderer_;
+	    vulkan::PipelineWrapper m_pipeline_;
 	public:
 	    StealthEngine();
-	    ~StealthEngine();
+	    ~StealthEngine() = default;
 
 	    void run();
 

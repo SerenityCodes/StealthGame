@@ -1,8 +1,6 @@
 ﻿#pragma once
 
-#include <memory>
-
-#include "Wrappers/CommandBufferWrapper.h"
+#include "BasicRenderer.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
 #include "Wrappers/PipelineWrapper.h"
@@ -17,11 +15,6 @@ class VulkanWrapper {
     InstanceWrapper m_instance_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
-    std::unique_ptr<SwapChain> m_swap_chain_;
-    PipelineWrapper m_pipeline_;
-    CommandBufferWrapper m_command_buffer_;
-
-    uint32_t m_current_frame_ = 0;
 public:
     VulkanWrapper();
     VulkanWrapper(const VulkanWrapper&) = delete;
@@ -31,9 +24,8 @@ public:
     ~VulkanWrapper() = default;
 
     Window& window();
-
-    void draw_frame();
-    void reset_swap_chain();
+    DeviceWrapper* device();
+    VkSurfaceKHR surface();
 };
 
 }

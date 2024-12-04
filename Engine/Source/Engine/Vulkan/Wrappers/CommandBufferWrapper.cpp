@@ -7,10 +7,10 @@
 
 namespace engine::vulkan {
 
-CommandBufferWrapper::CommandBufferWrapper(Window* window, DeviceWrapper* device, PipelineWrapper* pipeline, SwapChain* swap_chain, uint32_t graphics_queue_family) : m_window_(window), m_device_(device), m_pipeline_(pipeline), m_swap_chain_(swap_chain) {
+CommandBufferWrapper::CommandBufferWrapper(DeviceWrapper* device, SwapChain* swap_chain) : m_device_(device), m_swap_chain_(swap_chain) {
     VkCommandPoolCreateInfo command_pool_create_info{};
     command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    command_pool_create_info.queueFamilyIndex = graphics_queue_family;
+    command_pool_create_info.queueFamilyIndex = device->get_graphics_queue_family().graphics_family_index;
     command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     
     if (vkCreateCommandPool(*m_device_,&command_pool_create_info, nullptr, &m_command_pool_) != VK_SUCCESS) {
@@ -60,49 +60,6 @@ void CommandBufferWrapper::reset_fence(uint32_t current_frame) const {
     vkResetFences(*m_device_, 1, &m_in_flight_fences_[current_frame]);
 }
 
-void CommandBufferWrapper::record_command_buffer(VkRenderPass render_pass, uint32_t image_index, uint32_t current_frame) const {
-    VkCommandBuffer current_cmd_buffer = m_primary_command_buffers_[current_frame];
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    if (vkBeginCommandBuffer(current_cmd_buffer, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to begin recording command buffer!");
-    }
-
-    VkRenderPassBeginInfo render_pass_info{};
-    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    render_pass_info.renderPass = render_pass;
-    render_pass_info.framebuffer = m_swap_chain_->get_frame_buffer(image_index);
-    render_pass_info.renderArea = {{0, 0}, m_swap_chain_->get_swap_chain_extent()};
-
-    VkClearValue clear_value = {{{0.0, 0.0, 0.0, 1.0}}};
-    render_pass_info.clearValueCount = 1;
-    render_pass_info.pClearValues = &clear_value;
-
-    vkCmdBeginRenderPass(current_cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(current_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_->get_pipeline());
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_swap_chain_->get_swap_chain_extent().width);
-    viewport.height = static_cast<float>(m_swap_chain_->get_swap_chain_extent().height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(current_cmd_buffer, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = m_swap_chain_->get_swap_chain_extent();
-    vkCmdSetScissor(current_cmd_buffer, 0, 1, &scissor);
-
-    vkCmdDraw(current_cmd_buffer, 3, 1, 0, 0);
-    vkCmdEndRenderPass(current_cmd_buffer);
-
-    if (vkEndCommandBuffer(current_cmd_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to record command buffer!");
-    }
-}
-
 void CommandBufferWrapper::reset_command_buffer(uint32_t current_frame) const {
     vkResetCommandBuffer(m_primary_command_buffers_[current_frame], 0);
 }
@@ -126,6 +83,10 @@ void CommandBufferWrapper::submit_command_buffer(uint32_t current_frame) const {
     }
 }
 
+void CommandBufferWrapper::bind_command_buffer(VkPipeline pipeline, uint32_t current_frame) {
+    vkCmdBindPipeline(m_primary_command_buffers_[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+}
+
 bool CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32_t image_index) const {
     VkSemaphore wait_semaphores[] = {m_render_finished_semaphores_[current_frame]};
     VkPresentInfoKHR present_info{};
@@ -146,6 +107,11 @@ bool CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32
         throw std::runtime_error("Failed to present swap chain");
     }
     return false;
+}
+
+VkCommandBuffer CommandBufferWrapper::get_command_buffer(
+    uint32_t current_frame) const {
+    return m_primary_command_buffers_[current_frame];
 }
 
 void CommandBufferWrapper::reset_swap_chain_ptr(SwapChain* swap_chain) {

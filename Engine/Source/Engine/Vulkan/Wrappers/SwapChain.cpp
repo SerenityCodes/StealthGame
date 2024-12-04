@@ -6,10 +6,12 @@ namespace engine::vulkan {
 
 SwapChain::SwapChain(GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device) : m_window_(window), m_device_(device), m_surface_(surface),
     m_support_details_(create_support_details(surface, device->get_physical_device())),
-    m_swap_chain_(nullptr) {
+    m_swap_chain_(nullptr), m_render_pass_(nullptr) {
     create_swap_chain();
     create_swap_chain_images();
     create_swap_chain_image_views();
+    m_render_pass_ = create_render_pass();
+    create_frame_buffers(m_render_pass_);
 }
 
 SwapChain::~SwapChain() {
@@ -20,6 +22,7 @@ SwapChain::~SwapChain() {
         glfwWaitEvents();
     }
     vkDeviceWaitIdle(*m_device_);
+    vkDestroyRenderPass(*m_device_, m_render_pass_, nullptr);
     for (const auto& frame_buffer : m_frame_buffers_) {
         vkDestroyFramebuffer(m_device_->get_logical_device(), frame_buffer, nullptr);
     }
@@ -66,7 +69,7 @@ void SwapChain::create_swap_chain() {
     swap_chain_create_info.clipped = VK_TRUE;
     swap_chain_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(*m_device_, &swap_chain_create_info, nullptr, &m_swap_chain_) != VK_SUCCESS) {
+    if (auto res = vkCreateSwapchainKHR(*m_device_, &swap_chain_create_info, nullptr, &m_swap_chain_); res != VK_SUCCESS) {
         throw std::runtime_error("Failed to create swap chain!");
     }
     m_swap_chain_format_ = surface_format.format;
@@ -143,6 +146,54 @@ VkFormat SwapChain::get_swap_chain_format() const {
 
 VkFramebuffer SwapChain::get_frame_buffer(uint32_t index) const {
     return m_frame_buffers_[index];
+}
+
+VkRenderPass SwapChain::create_render_pass() const {
+    VkAttachmentDescription color_attachment{};
+    color_attachment.format = m_swap_chain_format_;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_attachment_ref{};
+    color_attachment_ref.attachment = 0;
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkRenderPassCreateInfo render_pass_create_info{};
+    render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_create_info.attachmentCount = 1;
+    render_pass_create_info.pAttachments = &color_attachment;
+    render_pass_create_info.subpassCount = 1;
+    render_pass_create_info.pSubpasses = &subpass;
+    render_pass_create_info.dependencyCount = 1;
+    render_pass_create_info.pDependencies = &dependency;
+
+    VkRenderPass render_pass = VK_NULL_HANDLE;
+    if (vkCreateRenderPass(*m_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create render pass!");
+    }
+    return render_pass;
+}
+
+VkRenderPass SwapChain::get_current_render_pass() const {
+    return m_render_pass_;
 }
 
 SwapChain::operator VkSwapchainKHR() const {

@@ -20,7 +20,8 @@ project "Engine"
    {
       "Source",
       vulkanSDKPath .. "/Include",
-      "Vendor/glfw/include"
+      "Vendor/glfw/include",
+      "Vendor/glm/glm",
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")

@@ -8,7 +8,7 @@ Window::Window(const int height, const int width, const char* title) : m_window_
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     m_window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
     glfwSetWindowUserPointer(m_window_, this);
-    
+    glfwSetFramebufferSizeCallback(m_window_, frame_buffer_size_callback);
 }
 
 Window::~Window() {

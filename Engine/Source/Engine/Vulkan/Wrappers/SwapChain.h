@@ -18,6 +18,7 @@ private:
     VkSurfaceKHR m_surface_;
     SupportDetails m_support_details_;
     VkSwapchainKHR m_swap_chain_;
+    VkRenderPass m_render_pass_;
     
     DynArray<VkImage> m_images_;
     DynArray<VkImageView> m_image_views_;
@@ -38,6 +39,9 @@ public:
     VkExtent2D get_swap_chain_extent() const;
     VkFormat get_swap_chain_format() const;
     VkFramebuffer get_frame_buffer(uint32_t index) const;
+
+    VkRenderPass create_render_pass() const;
+    VkRenderPass get_current_render_pass() const;
 
     operator VkSwapchainKHR() const;
     SupportDetails get_support_details() const;
