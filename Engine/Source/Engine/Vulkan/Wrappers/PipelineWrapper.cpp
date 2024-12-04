@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "Engine/Engine.h"
+#include "Engine/Vulkan/VulkanModel.h"
 
 namespace engine::vulkan {
 
@@ -33,12 +34,14 @@ PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device)
     dynamic_state_create_info.dynamicStateCount = 2;
     dynamic_state_create_info.pDynamicStates = dynamic_states;
 
+    VkVertexInputBindingDescription binding_description = VulkanModel::Vertex::get_binding_descriptions();
+    DynArray<VkVertexInputAttributeDescription> vertex_attribute_descriptions = VulkanModel::Vertex::get_attribute_descriptions();
     VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info{};
     vertex_input_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_state_create_info.vertexBindingDescriptionCount = 0;
-    vertex_input_state_create_info.pVertexBindingDescriptions = nullptr;
-    vertex_input_state_create_info.vertexAttributeDescriptionCount = 0;
-    vertex_input_state_create_info.pVertexAttributeDescriptions = nullptr;
+    vertex_input_state_create_info.vertexBindingDescriptionCount = 1;
+    vertex_input_state_create_info.pVertexBindingDescriptions = &binding_description;
+    vertex_input_state_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descriptions.get_size());
+    vertex_input_state_create_info.pVertexAttributeDescriptions = vertex_attribute_descriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_create_info{};
     input_assembly_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -109,8 +112,14 @@ PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device)
     pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipeline_layout_create_info.setLayoutCount = 0;
     pipeline_layout_create_info.pSetLayouts = nullptr;
-    pipeline_layout_create_info.pushConstantRangeCount = 0;
-    pipeline_layout_create_info.pPushConstantRanges = nullptr;
+
+    VkPushConstantRange push_constant_range{};
+    push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    push_constant_range.offset = 0;
+    push_constant_range.size = sizeof(SimplePushConstantData);
+    
+    pipeline_layout_create_info.pushConstantRangeCount = 1;
+    pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
 
     if (vkCreatePipelineLayout(*m_device_, &pipeline_layout_create_info, nullptr, &m_pipeline_layout_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout!");

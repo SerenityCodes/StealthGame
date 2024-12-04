@@ -1,18 +1,18 @@
 #pragma once
 
-#include <glslang/Include/glslang_c_shader_types.h>
-#include <glslang/Public/ShaderLang.h>
-
-#include "Allocators/StackAllocator.h"
+#include "../../Vendor/entt/include/entt.hpp"
+#include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
+#include "Vulkan/Wrappers/PipelineWrapper.h"
 
 namespace engine {
 
 	class StealthEngine {
-	    allocators::StackAllocator frame_allocator_;
+	    entt::registry m_registry_;
 	    vulkan::VulkanWrapper m_vulkan_wrapper_;
 	    vulkan::BasicRenderer m_renderer_;
 	    vulkan::PipelineWrapper m_pipeline_;
+	    std::unique_ptr<vulkan::VulkanModel> m_model_;
 	public:
 	    StealthEngine();
 	    ~StealthEngine() = default;

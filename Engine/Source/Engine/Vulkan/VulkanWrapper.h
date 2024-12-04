@@ -1,9 +1,7 @@
 ﻿#pragma once
 
-#include "BasicRenderer.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
-#include "Wrappers/PipelineWrapper.h"
 #include "Wrappers/SurfaceWrapper.h"
 #include "Wrappers/Window.h"
 

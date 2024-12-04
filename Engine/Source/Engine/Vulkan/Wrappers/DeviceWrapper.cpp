@@ -143,4 +143,44 @@ QueueWrapper::QueueFamily DeviceWrapper::get_graphics_queue_family() const {
     return m_graphics_queue_family_;
 }
 
+uint32_t DeviceWrapper::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const {
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(m_physical_device_, &memory_properties);
+    for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+        if ((type_filter & (1 << i)) &&
+            (memory_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+            }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
+void DeviceWrapper::create_buffer(VkDeviceSize size, VkBufferUsageFlags flags,
+    VkMemoryPropertyFlags properties, VkBuffer& buffer,
+    VkDeviceMemory& buffer_memory) const {
+    VkBufferCreateInfo buffer_create_info{};
+    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_create_info.size = size;
+    buffer_create_info.usage = flags;
+    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(m_device_, &buffer_create_info, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create buffer!");
+    }
+
+    VkMemoryRequirements memory_requirements;
+    vkGetBufferMemoryRequirements(m_device_, buffer, &memory_requirements);
+    VkMemoryAllocateInfo memory_allocate_info{};
+    memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memory_allocate_info.allocationSize = memory_requirements.size;
+    memory_allocate_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(m_device_, &memory_allocate_info, nullptr, &buffer_memory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate buffer memory!");
+    }
+
+    vkBindBufferMemory(m_device_, buffer, buffer_memory, 0);
+}
+
 }
