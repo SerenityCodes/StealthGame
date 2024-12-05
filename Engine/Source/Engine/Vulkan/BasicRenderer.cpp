@@ -6,7 +6,7 @@
 namespace engine::vulkan {
 
 BasicRenderer::BasicRenderer(allocators::StackAllocator& allocator, Window* window, DeviceWrapper* device, VkSurfaceKHR surface) : m_allocator_(allocator), m_swap_chain_mem_buffer_(nullptr), m_window_(window), m_device_(device),
-    m_surface_(surface), m_swap_chain_(recreate_swap_chain()), m_command_buffer_(device, m_swap_chain_.get()) {
+    m_surface_(surface), m_swap_chain_(initialize_swap_chain()), m_command_buffer_(device, m_swap_chain_.get()) {
 }
 
 VkCommandBuffer BasicRenderer::begin_frame() {
@@ -14,8 +14,7 @@ VkCommandBuffer BasicRenderer::begin_frame() {
     m_command_buffer_.wait_for_fence(m_current_frame_);
     if (auto res = vkAcquireNextImageKHR(*m_device_, *m_swap_chain_, UINT64_MAX, m_command_buffer_.get_image_available_semaphore(m_current_frame_), VK_NULL_HANDLE, &m_current_image_index_); res != VK_SUCCESS) {
         if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-            m_swap_chain_ = nullptr;
-            m_swap_chain_ = recreate_swap_chain();
+            recreate_swap_chain();
             return nullptr;
         }
         throw std::runtime_error("failed to acquire swap chain image");
@@ -42,8 +41,7 @@ void BasicRenderer::end_frame() {
     m_command_buffer_.submit_command_buffer(m_current_frame_);
     if (m_command_buffer_.present_command_buffer(m_current_frame_, m_current_image_index_) || m_window_->was_resized()) {
         m_window_->toggle_resized();
-        m_swap_chain_ = nullptr;
-        m_swap_chain_ = recreate_swap_chain();
+        recreate_swap_chain();
     }
     m_is_frame_in_progress_ = false;
     m_current_frame_ = (m_current_frame_ + 1) % 2;
@@ -66,7 +64,7 @@ void BasicRenderer::begin_render_pass(VkCommandBuffer command_buffer) {
 
     vkCmdBeginRenderPass(current_cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport viewport{};
+    VkViewport viewport;
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = static_cast<float>(m_swap_chain_->get_swap_chain_extent().width);
@@ -75,13 +73,13 @@ void BasicRenderer::begin_render_pass(VkCommandBuffer command_buffer) {
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(current_cmd_buffer, 0, 1, &viewport);
 
-    VkRect2D scissor{};
+    VkRect2D scissor;
     scissor.offset = {0, 0};
     scissor.extent = m_swap_chain_->get_swap_chain_extent();
     vkCmdSetScissor(current_cmd_buffer, 0, 1, &scissor);
 }
 
-void BasicRenderer::end_render_pass(VkCommandBuffer command_buffer) {
+void BasicRenderer::end_render_pass(VkCommandBuffer command_buffer) const {
     assert(m_is_frame_in_progress_ && "Can't end render pass when there's no frame to end");
     assert(command_buffer == get_current_cmd_buffer() && "Can't end render pass on command buffer from a different frame");
     vkCmdEndRenderPass(command_buffer);
@@ -103,11 +101,15 @@ VkExtent2D BasicRenderer::get_swap_chain_extent() const {
     return m_swap_chain_->get_swap_chain_extent();
 }
 
-std::unique_ptr<SwapChain> BasicRenderer::recreate_swap_chain() {
+ObjectHolder<SwapChain> BasicRenderer::initialize_swap_chain() {
     vkDeviceWaitIdle(*m_device_);
-    std::unique_ptr<SwapChain> new_swap_chain = std::make_unique<SwapChain>(m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_);
-    m_command_buffer_.reset_swap_chain_ptr(new_swap_chain.get());
+    ObjectHolder<SwapChain> new_swap_chain{m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_};
     return new_swap_chain;
+}
+
+void BasicRenderer::recreate_swap_chain() {
+    vkDeviceWaitIdle(*m_device_);
+    m_swap_chain_.emplace(m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_);
 }
 
 }

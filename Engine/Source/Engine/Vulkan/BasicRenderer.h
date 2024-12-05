@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <memory>
 
+#include "Engine/Containers/ObjectHolder.h"
 #include "Wrappers/CommandBufferWrapper.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/SwapChain.h"
@@ -13,7 +14,7 @@ class BasicRenderer {
     Window* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
-    std::unique_ptr<SwapChain> m_swap_chain_;
+    ObjectHolder<SwapChain> m_swap_chain_;
     CommandBufferWrapper m_command_buffer_;
 
     uint32_t m_current_frame_ = 0;
@@ -30,7 +31,7 @@ public:
     VkCommandBuffer begin_frame();
     void end_frame();
     void begin_render_pass(VkCommandBuffer command_buffer);
-    void end_render_pass(VkCommandBuffer command_buffer);
+    void end_render_pass(VkCommandBuffer command_buffer) const;
 
     [[nodiscard]] bool is_frame_in_progress() const;
     [[nodiscard]] VkCommandBuffer get_current_cmd_buffer() const;
@@ -38,7 +39,8 @@ public:
 
     [[nodiscard]] VkExtent2D get_swap_chain_extent() const;
     
-    std::unique_ptr<SwapChain> recreate_swap_chain();
+    ObjectHolder<SwapChain> initialize_swap_chain();
+    void recreate_swap_chain();
 };
 
 }
