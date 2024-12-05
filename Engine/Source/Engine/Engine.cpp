@@ -29,7 +29,7 @@ namespace engine {
 constexpr int default_stack_size = 2 << 20;
 
 std::unique_ptr<vulkan::VulkanModel> make_cube(vulkan::DeviceWrapper* device, glm::vec3 offset) {
-    DynArray<vulkan::VulkanModel::Vertex> vertices{
+    ArrayRef<vulkan::VulkanModel::Vertex> vertices{
         // left face (white)
           {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
           {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
@@ -81,10 +81,10 @@ std::unique_ptr<vulkan::VulkanModel> make_cube(vulkan::DeviceWrapper* device, gl
     for (auto& v : vertices) {
         v.position += offset;
     }
-    return std::make_unique<vulkan::VulkanModel>(device, vertices);
+    return std::make_unique<vulkan::VulkanModel>(device, std::move(vertices));
 }
 
-StealthEngine::StealthEngine() : m_renderer_(&m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(&m_renderer_, m_vulkan_wrapper_.device()), m_model_(make_cube(m_vulkan_wrapper_.device(), {0, 0, 0})) { }
+StealthEngine::StealthEngine() : m_allocator_(default_stack_size), m_vulkan_wrapper_(m_allocator_), m_renderer_(m_allocator_, &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(m_allocator_, &m_renderer_, m_vulkan_wrapper_.device()), m_model_(make_cube(m_vulkan_wrapper_.device(), {0, 0, 0})) { }
 
 void StealthEngine::run() {
     while (!m_vulkan_wrapper_.window().should_close()) {
@@ -116,6 +116,23 @@ DynArray<char> StealthEngine::read_file(const char* file_name) {
     file.seekg(0, std::ios::beg);
     DynArray<char> buffer(file_size);
     file.read(buffer.data(), file_size);
+    file.close();
+    return buffer;
+}
+
+ArrayRef<char> StealthEngine::read_temporary_file(const char* file_name,
+    allocators::StackAllocator& allocator) {
+    std::ifstream file(file_name, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
+        throw std::runtime_error("Failed to open file");
+    }
+    file.seekg(0, std::ios::end);
+    const std::streamsize file_size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    const auto ptr = static_cast<char*>(allocator.allocate_raw(sizeof(char) * static_cast<uint32_t>(file_size)));
+    ArrayRef buffer{ptr, static_cast<size_t>(file_size)};
+    file.read(ptr, file_size);
     file.close();
     return buffer;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Vendor/entt/include/entt.hpp"
+#include "Containers/ArrayRef.h"
 #include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
@@ -9,6 +10,7 @@ namespace engine {
 
 	class StealthEngine {
 	    entt::registry m_registry_;
+	    allocators::StackAllocator m_allocator_;
 	    vulkan::VulkanWrapper m_vulkan_wrapper_;
 	    vulkan::BasicRenderer m_renderer_;
 	    vulkan::PipelineWrapper m_pipeline_;
@@ -20,6 +22,7 @@ namespace engine {
 	    void run();
 
 	    static DynArray<char> read_file(const char* file_name);
+	    static ArrayRef<char> read_temporary_file(const char* file_name, allocators::StackAllocator& allocator);
 	};
 
 }

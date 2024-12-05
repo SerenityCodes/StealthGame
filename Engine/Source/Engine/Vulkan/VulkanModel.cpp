@@ -1,5 +1,7 @@
 ﻿#include "VulkanModel.h"
 
+#include <array>
+
 namespace engine::vulkan {
 
 VkVertexInputBindingDescription VulkanModel::Vertex::
@@ -11,25 +13,26 @@ get_binding_descriptions() {
     return binding_description;
 }
 
-DynArray<VkVertexInputAttributeDescription> VulkanModel::Vertex::
+std::array<VkVertexInputAttributeDescription, 2> VulkanModel::Vertex::
 get_attribute_descriptions() {
-    DynArray<VkVertexInputAttributeDescription> attributeDescriptions{2};
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(Vertex, position);
+    VkVertexInputAttributeDescription position_attribute{};
+    position_attribute.binding = 0;
+    position_attribute.location = 0;
+    position_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    position_attribute.offset = offsetof(Vertex, position);
+
+    VkVertexInputAttributeDescription color_attribute{};
+    color_attribute.binding = 0;
+    color_attribute.location = 1;
+    color_attribute.format = VK_FORMAT_R32G32_SFLOAT;
+    color_attribute.offset = offsetof(Vertex, color);
     
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
-    
-    return attributeDescriptions;
+    return {position_attribute, color_attribute};
 }
 
 VulkanModel::VulkanModel(DeviceWrapper* device_wrapper,
-                         const DynArray<Vertex>& vertices) : m_device_wrapper_(device_wrapper) {
-    m_vertex_count_ = static_cast<uint32_t>(vertices.get_size());
+                         const ArrayRef<Vertex>& vertices) : m_device_wrapper_(device_wrapper) {
+    m_vertex_count_ = static_cast<uint32_t>(vertices.size());
     assert(m_vertex_count_ > 3 && "Vertex count must be greater than 3");
     VkDeviceSize vertex_buffer_size = sizeof(Vertex) * m_vertex_count_;
     m_device_wrapper_->create_buffer(vertex_buffer_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,

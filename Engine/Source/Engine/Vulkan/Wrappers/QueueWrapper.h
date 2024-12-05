@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 #include <limits>
 
+#include "Engine/Allocators/StackAllocator.h"
+
 namespace engine::vulkan {
 
 class QueueWrapper {
@@ -24,7 +26,7 @@ public:
     ~QueueWrapper() = default;
 
     operator VkQueue() const;
-    static QueueFamily find_indices(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
+    static QueueFamily find_indices(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
     uint32_t graphics_family_index() const;
 };
 

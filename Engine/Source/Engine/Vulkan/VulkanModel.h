@@ -15,7 +15,7 @@ public:
         glm::vec3 color;
 
         static VkVertexInputBindingDescription get_binding_descriptions();
-        static DynArray<VkVertexInputAttributeDescription> get_attribute_descriptions();
+        static std::array<VkVertexInputAttributeDescription, 2> get_attribute_descriptions();
     };
 private:
     DeviceWrapper* m_device_wrapper_;
@@ -24,7 +24,7 @@ private:
     uint32_t m_vertex_count_;
 
 public:
-    VulkanModel(DeviceWrapper* device_wrapper, const DynArray<Vertex>& vertices);
+    VulkanModel(DeviceWrapper* device_wrapper, const ArrayRef<Vertex>& vertices);
     ~VulkanModel();
 
     VulkanModel(const VulkanModel&) = delete;

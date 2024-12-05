@@ -1,27 +1,27 @@
 ﻿#include "InstanceWrapper.h"
 
-#include <assert.h>
-
+#include <cassert>
 #include <cstring>
-#include <stdexcept>
 
+#include "Engine/Containers/ArrayRef.h"
 #include "Engine/Containers/DynArray.h"
 #include "GLFW/glfw3.h"
 
 namespace engine::vulkan {
 
-bool check_validation_layer_support(const DynArray<const char*>& needed_layers) {
+bool check_validation_layer_support(allocators::StackAllocator& allocator, const std::array<const char*, 1>& needed_layers) {
     
     uint32_t layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-    DynArray<VkLayerProperties> available_layers(static_cast<uint16_t>(layer_count));
-    vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
-
-    for (auto it = needed_layers.cbegin(); it != needed_layers.cend(); ++it) {
+    auto available_layers_arr = allocator.allocate(sizeof(VkLayerProperties), layer_count);
+    ArrayRef available_layers(available_layers_arr.get<VkLayerProperties>(), layer_count);
+    vkEnumerateInstanceLayerProperties(&layer_count, available_layers_arr.get<VkLayerProperties>());
+    
+    for (const auto& needed_layer : needed_layers) {
         bool layer_found = false;
         for (const auto& layer_properties : available_layers) {
-            if (strcmp(*it, layer_properties.layerName) == 0) {
+            if (strcmp(needed_layer, layer_properties.layerName) == 0) {
                 layer_found = true;
                 break;
             }
@@ -33,11 +33,11 @@ bool check_validation_layer_support(const DynArray<const char*>& needed_layers) 
     return true;
 }
 
-InstanceWrapper::InstanceWrapper(bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}) {
+InstanceWrapper::InstanceWrapper(allocators::StackAllocator& allocator, bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}), m_allocator_(allocator) {
     if (!enable_validation_layers) {
         m_enabled_validation_layers_ = {};
     }
-    if (enable_validation_layers && !check_validation_layer_support(m_enabled_validation_layers_)) {
+    if (enable_validation_layers && !check_validation_layer_support(allocator, m_enabled_validation_layers_)) {
         assert(false);
     }
     
@@ -62,7 +62,7 @@ InstanceWrapper::InstanceWrapper(bool enable_validation_layers) : m_enabled_vali
     create_info.ppEnabledExtensionNames = extensions;
 
     if (enable_validation_layers) {
-        create_info.enabledLayerCount = static_cast<uint32_t>(m_enabled_validation_layers_.get_size());
+        create_info.enabledLayerCount = static_cast<uint32_t>(m_enabled_validation_layers_.size());
         create_info.ppEnabledLayerNames = m_enabled_validation_layers_.data();
     } else {
         create_info.enabledLayerCount = 0;
@@ -81,7 +81,7 @@ InstanceWrapper::operator VkInstance() const {
     return m_instance_;
 }
 
-const DynArray<const char*>& InstanceWrapper::enabled_validation_layers() const {
+const std::array<const char*, 1>& InstanceWrapper::enabled_validation_layers() const {
     return m_enabled_validation_layers_;
 }
 

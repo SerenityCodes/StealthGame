@@ -8,10 +8,10 @@
 namespace engine::vulkan {
 
 
-PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
+PipelineWrapper::PipelineWrapper(allocators::StackAllocator& allocator, BasicRenderer* renderer, DeviceWrapper* device) : m_allocator_(allocator), m_device_(device),
     m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
-    DynArray<char> vertex_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.vert.spv");
-    DynArray<char> fragment_shader_source = StealthEngine::read_file("../Engine/Shaders/triangle.frag.spv");
+    ArrayRef<char> vertex_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.vert.spv", allocator);
+    ArrayRef<char> fragment_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.frag.spv", allocator);
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
@@ -35,12 +35,12 @@ PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device)
     dynamic_state_create_info.pDynamicStates = dynamic_states;
 
     VkVertexInputBindingDescription binding_description = VulkanModel::Vertex::get_binding_descriptions();
-    DynArray<VkVertexInputAttributeDescription> vertex_attribute_descriptions = VulkanModel::Vertex::get_attribute_descriptions();
+    auto vertex_attribute_descriptions = VulkanModel::Vertex::get_attribute_descriptions();
     VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info{};
     vertex_input_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state_create_info.vertexBindingDescriptionCount = 1;
     vertex_input_state_create_info.pVertexBindingDescriptions = &binding_description;
-    vertex_input_state_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descriptions.get_size());
+    vertex_input_state_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descriptions.size());
     vertex_input_state_create_info.pVertexAttributeDescriptions = vertex_attribute_descriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_create_info{};
@@ -148,6 +148,8 @@ PipelineWrapper::PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device)
     if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline!");
     }
+    size_t bytes_to_free = sizeof(char) * vertex_shader_source.size() + sizeof(char) * fragment_shader_source.size();
+    allocator.free_bytes(bytes_to_free);
 }
 
 PipelineWrapper::~PipelineWrapper() {
@@ -182,10 +184,10 @@ void PipelineWrapper::draw(VkCommandBuffer command_buffer) {
     vkCmdDraw(command_buffer, 3, 1, 0, 0);
 }
 
-VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const DynArray<char>& code) {
+VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<char>& code) {
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.get_size();
+    create_info.codeSize = code.size();
     create_info.pCode = reinterpret_cast<uint32_t*>(code.data());
 
     VkShaderModule shader_module = VK_NULL_HANDLE;

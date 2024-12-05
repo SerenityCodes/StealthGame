@@ -4,8 +4,7 @@
 
 namespace engine::vulkan {
 
-SwapChain::SwapChain(GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device) : m_window_(window), m_device_(device), m_surface_(surface),
-    m_support_details_(create_support_details(surface, device->get_physical_device())),
+SwapChain::SwapChain(void* array_buffer, allocators::StackAllocator& allocator, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device) : m_allocator_(allocator), m_full_buffer_start_(static_cast<uint32_t*>(array_buffer)), m_window_(window), m_device_(device), m_surface_(surface),
     m_swap_chain_(nullptr), m_render_pass_(nullptr) {
     create_swap_chain();
     create_swap_chain_images();
@@ -33,7 +32,9 @@ SwapChain::~SwapChain() {
 }
 
 void SwapChain::create_swap_chain() {
-    SupportDetails support_details = create_support_details(m_surface_, m_device_->get_physical_device());
+    size_t temp_bytes_allocated = 0;
+    SupportDetails support_details = create_support_details(m_allocator_, m_surface_, m_device_->get_physical_device(), temp_bytes_allocated);
+    m_allocator_.free_bytes(temp_bytes_allocated);
     VkSurfaceFormatKHR surface_format = choose_swap_surface_format(support_details.formats);
     VkPresentModeKHR present_mode = choose_present_mode(support_details.present_modes);
     VkExtent2D swap_chain_extent = choose_extent(m_window_, support_details.capabilities);
@@ -53,7 +54,7 @@ void SwapChain::create_swap_chain() {
     swap_chain_create_info.imageArrayLayers = 1;
     swap_chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(m_surface_, m_device_->get_physical_device());
+    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(m_allocator_, m_surface_, m_device_->get_physical_device());
     uint32_t queue_family_indices[] = {family.graphics_family_index, family.present_family_index};
     if (queue_family_indices[0] == queue_family_indices[1]) {
         swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -77,16 +78,22 @@ void SwapChain::create_swap_chain() {
 }
 
 void SwapChain::create_swap_chain_images() {
-    uint32_t image_count = 0;
-    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &image_count, nullptr);
-    m_images_.resize(image_count);
-    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &image_count, m_images_.data());
+    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, nullptr);
+    if (m_full_buffer_start_ == nullptr) {
+        size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * m_image_count_;
+        m_full_buffer_start_ = static_cast<uint32_t*>(m_allocator_.allocate_raw(bytes_for_all_images));
+    }
+    VkImage* arr_ptr = reinterpret_cast<VkImage*>(m_full_buffer_start_);
+    m_images_ = ArrayRef(arr_ptr, m_image_count_);
+    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, m_images_.data());
 }
 
 void SwapChain::create_swap_chain_image_views() {
-    m_image_views_.resize(m_images_.get_size());
+    size_t buffer_offset = m_image_count_ * sizeof(VkImage);
+    auto arr_ptr = m_full_buffer_start_ + buffer_offset;
+    m_image_views_ = ArrayRef(reinterpret_cast<VkImageView*>(arr_ptr), m_image_count_);
 
-    for (uint32_t i = 0; i < m_images_.get_size(); i++) {
+    for (uint32_t i = 0; i < m_images_.size(); i++) {
         VkImageViewCreateInfo image_view_create_info{};
         image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         image_view_create_info.image = m_images_[i];
@@ -109,8 +116,10 @@ void SwapChain::create_swap_chain_image_views() {
 }
 
 void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
-    m_frame_buffers_.resize(m_image_views_.get_size());
-    for (uint32_t i = 0; i < m_frame_buffers_.get_size(); i++) {
+    size_t buffer_offset = m_image_count_ * sizeof(VkImage) + sizeof(VkImageView) * m_image_count_;
+    auto arr_ptr = m_full_buffer_start_ + buffer_offset;
+    m_frame_buffers_ = ArrayRef(reinterpret_cast<VkFramebuffer*>(arr_ptr), m_image_count_);
+    for (uint32_t i = 0; i < m_frame_buffers_.size(); i++) {
         VkImageView attachments[] = {m_image_views_[i]};
         
         VkFramebufferCreateInfo framebuffer_create_info{};
@@ -129,10 +138,10 @@ void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
 }
 
 size_t SwapChain::get_image_views_count() const {
-    return m_images_.get_size();
+    return m_images_.size();
 }
 
-const DynArray<VkImageView>& SwapChain::get_image_views() const {
+const ArrayRef<VkImageView>& SwapChain::get_image_views() const {
     return m_image_views_;
 }
 
@@ -196,16 +205,16 @@ VkRenderPass SwapChain::get_current_render_pass() const {
     return m_render_pass_;
 }
 
+uint32_t* SwapChain::get_starting_stack_pos() const {
+    return static_cast<uint32_t*>(m_full_buffer_start_);
+}
+
 SwapChain::operator VkSwapchainKHR() const {
     return m_swap_chain_;
 }
 
-SwapChain::SupportDetails SwapChain::get_support_details() const {
-    return m_support_details_;
-}
-
 VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
-    const DynArray<VkSurfaceFormatKHR>& available_formats) {
+    const ArrayRef<VkSurfaceFormatKHR>& available_formats) {
     for (const auto& available_format : available_formats) {
         if (available_format.format == VK_FORMAT_B8G8R8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             return available_format;
@@ -215,7 +224,7 @@ VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
 }
 
 VkPresentModeKHR SwapChain::choose_present_mode(
-    const DynArray<VkPresentModeKHR>& available_present_modes) {
+    const ArrayRef<VkPresentModeKHR>& available_present_modes) {
     for (const auto& available_present_mode : available_present_modes) {
         if (available_present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             return available_present_mode;
@@ -243,21 +252,47 @@ VkExtent2D SwapChain::choose_extent(GLFWwindow* window, const VkSurfaceCapabilit
 }
 
 SwapChain::SupportDetails SwapChain::create_support_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device) {
-    SupportDetails details{.capabilities = {}, .formats = {}, .present_modes = {}};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &details.capabilities);
+    VkSurfaceCapabilitiesKHR capabilities_khr{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities_khr);
     uint32_t format_count = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
-    if (format_count != 0) {
-        details.formats.resize(format_count);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, details.formats.data());
-    }
     uint32_t present_mode_count = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
-    if (present_mode_count != 0) {
-        details.present_modes.resize(present_mode_count);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, details.present_modes.data());
+    VkSurfaceFormatKHR* surface_format_ptr = nullptr;
+    if (format_count != 0) {
+        surface_format_ptr = new VkSurfaceFormatKHR[format_count];
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, surface_format_ptr);
     }
-    return details;
+    VkPresentModeKHR* present_modes_ptr = nullptr;
+    if (present_mode_count != 0) {
+        present_modes_ptr = new VkPresentModeKHR[present_mode_count];
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes_ptr);
+    }
+    return {.capabilities = capabilities_khr,
+        .formats = ArrayRef{surface_format_ptr, format_count, true},
+        .present_modes = ArrayRef{present_modes_ptr, present_mode_count, true}};
+}
+
+SwapChain::SupportDetails SwapChain::create_support_details(
+    allocators::StackAllocator& allocator, VkSurfaceKHR surface,
+    VkPhysicalDevice physical_device, size_t& bytes_allocated) {
+    VkSurfaceCapabilitiesKHR capabilities_khr;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities_khr);
+    uint32_t format_count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+    uint32_t present_mode_count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
+    size_t surface_format_bytes = sizeof(VkSurfaceFormatKHR) * format_count;
+    size_t surface_present_mode_bytes = sizeof(VkPresentModeKHR) * present_mode_count;
+    size_t total_alloc_size = surface_format_bytes + surface_present_mode_bytes;
+    bytes_allocated = total_alloc_size;
+    VkSurfaceFormatKHR* formats = static_cast<VkSurfaceFormatKHR*>(allocator.allocate_raw(surface_format_bytes));
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats);
+    VkPresentModeKHR* present_modes = static_cast<VkPresentModeKHR*>(allocator.allocate_raw(surface_present_mode_bytes));
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes);
+    return {.capabilities = capabilities_khr,
+        .formats = ArrayRef{formats, format_count},
+        .present_modes = ArrayRef{present_modes, present_mode_count}};
 }
 
 }
