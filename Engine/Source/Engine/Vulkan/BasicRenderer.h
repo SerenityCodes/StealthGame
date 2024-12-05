@@ -38,6 +38,7 @@ public:
     [[nodiscard]] VkRenderPass get_render_pass() const;
 
     [[nodiscard]] VkExtent2D get_swap_chain_extent() const;
+    float get_aspect_ratio() const;
     
     ObjectHolder<SwapChain> initialize_swap_chain();
     void recreate_swap_chain();

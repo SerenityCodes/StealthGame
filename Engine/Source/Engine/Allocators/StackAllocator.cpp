@@ -116,4 +116,14 @@ void StackAllocator::allocate_new_start() {
 uint32_t* StackAllocator::get_current_pos() const {
     return stack_ptr;
 }
+
+bool StackAllocator::operator==(const StackAllocator& other) const {
+    return stack_start == other.stack_start;
+}
+
+bool StackAllocator::operator!=(const StackAllocator& other) const {
+    return !(*this == other);
+}
+
+
 }

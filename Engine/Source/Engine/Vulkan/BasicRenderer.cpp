@@ -101,6 +101,11 @@ VkExtent2D BasicRenderer::get_swap_chain_extent() const {
     return m_swap_chain_->get_swap_chain_extent();
 }
 
+float BasicRenderer::get_aspect_ratio() const {
+    VkExtent2D extent = m_swap_chain_->get_swap_chain_extent();
+    return static_cast<float>(extent.width) / static_cast<float>(extent.height);
+}
+
 ObjectHolder<SwapChain> BasicRenderer::initialize_swap_chain() {
     vkDeviceWaitIdle(*m_device_);
     ObjectHolder<SwapChain> new_swap_chain{m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_};
