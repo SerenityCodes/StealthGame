@@ -1,21 +1,30 @@
 ﻿#pragma once
 
+#include <glm/glm.hpp>
+
 #include "DeviceWrapper.h"
 #include "SwapChain.h"
 #include "Engine/Vulkan/BasicRenderer.h"
+#include "Engine/Vulkan/VulkanModel.h"
 
 namespace engine::vulkan {
 
 constexpr VkDynamicState dynamic_states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 
 class PipelineWrapper {
+public:
+    struct SimplePushConstantData {
+        glm::mat4 transform;
+    };
+private:
+    allocators::StackAllocator& m_allocator_;
     DeviceWrapper* m_device_;
     VkShaderModule m_vertex_shader_;
     VkShaderModule m_fragment_shader_;
     VkPipelineLayout m_pipeline_layout_;
     VkPipeline m_pipeline_;
 public:
-    PipelineWrapper(BasicRenderer* renderer, DeviceWrapper* device);
+    PipelineWrapper(allocators::StackAllocator& allocator, BasicRenderer* renderer, DeviceWrapper* device);
     ~PipelineWrapper();
     
     VkPipelineLayout get_pipeline_layout() const;
@@ -26,7 +35,7 @@ public:
     void bind(VkCommandBuffer command_buffer);
     void draw(VkCommandBuffer command_buffer);
     
-    static VkShaderModule create_shader_module(VkDevice device, const DynArray<char>& code);
+    static VkShaderModule create_shader_module(VkDevice device, const ArrayRef<char>& code);
 };
 
 }

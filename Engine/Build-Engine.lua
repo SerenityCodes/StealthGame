@@ -5,13 +5,15 @@ project "Engine"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp" }
+   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Vendor/entt/**.hpp" }
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
    
    defines 
    {
-        "GLFW_INCLUDE_VULKAN"
+        "GLFW_INCLUDE_VULKAN",
+        "GLM_FORCE_RADIANS",
+        "GLM_FORCE_DEPTH_ZERO_TO_ONE"
    }
 
    links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW" }
@@ -21,7 +23,7 @@ project "Engine"
       "Source",
       vulkanSDKPath .. "/Include",
       "Vendor/glfw/include",
-      "Vendor/glm/glm",
+      "Vendor/glm/glm"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")

@@ -5,7 +5,7 @@
 
 namespace engine::vulkan {
 
-BasicRenderer::BasicRenderer(Window* window, DeviceWrapper* device, VkSurfaceKHR surface) : m_window_(window), m_device_(device),
+BasicRenderer::BasicRenderer(allocators::StackAllocator& allocator, Window* window, DeviceWrapper* device, VkSurfaceKHR surface) : m_allocator_(allocator), m_swap_chain_mem_buffer_(nullptr), m_window_(window), m_device_(device),
     m_surface_(surface), m_swap_chain_(recreate_swap_chain()), m_command_buffer_(device, m_swap_chain_.get()) {
 }
 
@@ -105,7 +105,7 @@ VkExtent2D BasicRenderer::get_swap_chain_extent() const {
 
 std::unique_ptr<SwapChain> BasicRenderer::recreate_swap_chain() {
     vkDeviceWaitIdle(*m_device_);
-    std::unique_ptr<SwapChain> new_swap_chain = std::make_unique<SwapChain>(m_window_->raw_window(), m_surface_, m_device_);
+    std::unique_ptr<SwapChain> new_swap_chain = std::make_unique<SwapChain>(m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_);
     m_command_buffer_.reset_swap_chain_ptr(new_swap_chain.get());
     return new_swap_chain;
 }

@@ -2,7 +2,8 @@
 
 #include "QueueWrapper.h"
 #include "SurfaceWrapper.h"
-#include "Engine/Containers/DynArray.h"
+#include "Engine/Allocators/StackAllocator.h"
+#include "Engine/Containers/ArrayRef.h"
 
 namespace engine::vulkan {
 
@@ -13,7 +14,7 @@ class DeviceWrapper {
     QueueWrapper m_present_queue_;
     QueueWrapper::QueueFamily m_graphics_queue_family_;
 public:
-    DeviceWrapper(VkSurfaceKHR surface, VkInstance instance, const DynArray<const char*>& validation_layers);
+    DeviceWrapper(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkInstance instance, const std::array<const char*, 1>& validation_layers);
     ~DeviceWrapper();
 
     operator VkDevice() const;
@@ -23,6 +24,9 @@ public:
     QueueWrapper get_graphics_queue() const;
     QueueWrapper get_present_queue() const;
     QueueWrapper::QueueFamily get_graphics_queue_family() const;
+
+    uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const;
+    void create_buffer(VkDeviceSize size, VkBufferUsageFlags flags, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory) const;
 };
 
 }

@@ -1,6 +1,7 @@
 ﻿#include "DeviceWrapper.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
@@ -20,39 +21,40 @@ bool is_device_suitable(VkPhysicalDevice physical_device) {
            device_features.geometryShader;
 }
 
-bool check_device_extension_support(VkPhysicalDevice device) {
+bool check_device_extension_support(allocators::StackAllocator& allocator, VkPhysicalDevice device) {
     const char* needed_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     
     uint32_t extension_count;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
 
-    DynArray<VkExtensionProperties> available_extensions(extension_count);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions.data());
+    auto arr = allocator.allocate(sizeof(VkExtensionProperties), extension_count);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, arr.get<VkExtensionProperties>());
 
     auto check_func = [needed_extensions](VkExtensionProperties extension) {
         return strcmp(extension.extensionName, needed_extensions[0]) == 0;
     };
+    ArrayRef<VkExtensionProperties> available_extensions{arr.get<VkExtensionProperties>(), extension_count};
     return std::any_of(available_extensions.begin(), available_extensions.end(), check_func);
 }
 
-bool is_swap_chain_good(VkSurfaceKHR surface, VkPhysicalDevice device) {
-    bool swap_chain_good = false;
-    SwapChain::SupportDetails swap_chain_support_details = SwapChain::create_support_details(surface, device);
-    swap_chain_good = !swap_chain_support_details.formats.is_empty() && !swap_chain_support_details.present_modes.is_empty();
-    return swap_chain_good;
+bool is_swap_chain_good(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice device, size_t& bytes_allocated) {
+    SwapChain::SupportDetails swap_chain_support_details = SwapChain::create_support_details(allocator, surface, device, bytes_allocated);
+    return !swap_chain_support_details.formats.is_empty() && !swap_chain_support_details.present_modes.is_empty();
 }
 
-VkPhysicalDevice pick_physical_device(VkSurfaceKHR surface, VkInstance instance) {
+VkPhysicalDevice pick_physical_device(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkInstance instance) {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
     if (device_count == 0) {
         throw std::runtime_error("No suitable GPUs available");
     }
-    DynArray<VkPhysicalDevice> physical_devices(static_cast<uint16_t>(device_count));
+    auto physical_devices_arr = allocator.allocate(sizeof(VkPhysicalDevice), device_count);
+    ArrayRef<VkPhysicalDevice> physical_devices(physical_devices_arr.get<VkPhysicalDevice>(), static_cast<uint16_t>(device_count));
     vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
     for (const auto& device : physical_devices) {
-        
-        if (is_device_suitable(device) && check_device_extension_support(device) && is_swap_chain_good(surface, device)) {
+        size_t bytes_allocated = 0;
+        if (is_device_suitable(device) && check_device_extension_support(allocator, device) && is_swap_chain_good(allocator, surface, device, bytes_allocated)) {
+            allocator.free_bytes(bytes_allocated);
             return device;
         }
     }
@@ -60,8 +62,8 @@ VkPhysicalDevice pick_physical_device(VkSurfaceKHR surface, VkInstance instance)
     throw std::runtime_error("failed to find suitable GPU!");
 }
 
-DeviceWrapper::DeviceWrapper(VkSurfaceKHR surface, VkInstance instance, const DynArray<const char*>& validation_layers) : m_device_(VK_NULL_HANDLE), m_physical_device_(pick_physical_device(surface, instance)) {
-    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(surface, m_physical_device_);
+DeviceWrapper::DeviceWrapper(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkInstance instance, const std::array<const char*, 1>& validation_layers) : m_device_(VK_NULL_HANDLE), m_physical_device_(pick_physical_device(allocator, surface, instance)) {
+    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(allocator, surface, m_physical_device_);
     m_graphics_queue_family_ = family;
     uint32_t indices[] = {family.graphics_family_index, family.present_family_index};
     VkDeviceQueueCreateInfo* create_infos;
@@ -98,8 +100,8 @@ DeviceWrapper::DeviceWrapper(VkSurfaceKHR surface, VkInstance instance, const Dy
     create_info.ppEnabledExtensionNames = enabled_extensions;
     create_info.queueCreateInfoCount = queue_create_count;
     create_info.pQueueCreateInfos = create_infos;
-    create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.get_size());
-    if (validation_layers.get_size() != 0) {
+    create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
+    if (!validation_layers.empty()) {
         create_info.ppEnabledLayerNames = validation_layers.data();
     }
     if (vkCreateDevice(m_physical_device_, &create_info, nullptr, &m_device_) != VK_SUCCESS) {
@@ -141,6 +143,46 @@ QueueWrapper DeviceWrapper::get_present_queue() const {
 
 QueueWrapper::QueueFamily DeviceWrapper::get_graphics_queue_family() const {
     return m_graphics_queue_family_;
+}
+
+uint32_t DeviceWrapper::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const {
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(m_physical_device_, &memory_properties);
+    for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+        if ((type_filter & (1 << i)) &&
+            (memory_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+            }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
+void DeviceWrapper::create_buffer(VkDeviceSize size, VkBufferUsageFlags flags,
+    VkMemoryPropertyFlags properties, VkBuffer& buffer,
+    VkDeviceMemory& buffer_memory) const {
+    VkBufferCreateInfo buffer_create_info{};
+    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_create_info.size = size;
+    buffer_create_info.usage = flags;
+    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(m_device_, &buffer_create_info, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create buffer!");
+    }
+
+    VkMemoryRequirements memory_requirements;
+    vkGetBufferMemoryRequirements(m_device_, buffer, &memory_requirements);
+    VkMemoryAllocateInfo memory_allocate_info{};
+    memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memory_allocate_info.allocationSize = memory_requirements.size;
+    memory_allocate_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(m_device_, &memory_allocate_info, nullptr, &buffer_memory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate buffer memory!");
+    }
+
+    vkBindBufferMemory(m_device_, buffer, buffer_memory, 0);
 }
 
 }

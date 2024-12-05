@@ -1,22 +1,22 @@
 ﻿#pragma once
 
-#include "BasicRenderer.h"
+#include "Engine/Containers/ArrayRef.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
-#include "Wrappers/PipelineWrapper.h"
 #include "Wrappers/SurfaceWrapper.h"
 #include "Wrappers/Window.h"
 
 namespace engine::vulkan {
 
 class VulkanWrapper {
+    allocators::StackAllocator& m_allocator_;
     Window window_;
-    DynArray<const char*> m_validation_layers_;
     InstanceWrapper m_instance_;
+    std::array<const char*, 1> m_validation_layers_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
 public:
-    VulkanWrapper();
+    VulkanWrapper(allocators::StackAllocator& allocator);
     VulkanWrapper(const VulkanWrapper&) = delete;
     VulkanWrapper(VulkanWrapper&&) = delete;
     VulkanWrapper& operator=(const VulkanWrapper&) = delete;

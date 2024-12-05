@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "Components/Transform3D.h"
+
 void* operator new(size_t size) {
     std::cout << "Allocated " << std::dec << size << " bytes\n";
     return malloc(size);
@@ -26,7 +28,63 @@ namespace engine {
 
 constexpr int default_stack_size = 2 << 20;
 
-StealthEngine::StealthEngine() : frame_allocator_(default_stack_size), m_renderer_(&m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(&m_renderer_, m_vulkan_wrapper_.device()) { }
+std::unique_ptr<vulkan::VulkanModel> make_cube(vulkan::DeviceWrapper* device, glm::vec3 offset) {
+    ArrayRef<vulkan::VulkanModel::Vertex> vertices{
+        // left face (white)
+          {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
+          {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
+          {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
+          {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
+          {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
+          {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
+
+          // right face (yellow)
+          {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
+          {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
+          {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
+          {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
+          {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
+          {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
+
+          // top face (orange, remember y axis points down)
+          {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+          {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+          {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+          {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+          {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+          {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+
+          // bottom face (red)
+          {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+          {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
+          {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
+          {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+          {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+          {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
+
+          // nose face (blue)
+          {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+          {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+          {{-.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+          {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+          {{.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+          {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+
+          // tail face (green)
+          {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+          {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+          {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+          {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+          {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+          {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+    };
+    for (auto& v : vertices) {
+        v.position += offset;
+    }
+    return std::make_unique<vulkan::VulkanModel>(device, std::move(vertices));
+}
+
+StealthEngine::StealthEngine() : m_allocator_(default_stack_size), m_vulkan_wrapper_(m_allocator_), m_renderer_(m_allocator_, &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(m_allocator_, &m_renderer_, m_vulkan_wrapper_.device()), m_model_(make_cube(m_vulkan_wrapper_.device(), {0, 0, 0})) { }
 
 void StealthEngine::run() {
     while (!m_vulkan_wrapper_.window().should_close()) {
@@ -34,7 +92,12 @@ void StealthEngine::run() {
         if (auto cmd_buffer = m_renderer_.begin_frame()) {
             m_renderer_.begin_render_pass(cmd_buffer);
             m_pipeline_.bind(cmd_buffer);
-            m_pipeline_.draw(cmd_buffer);
+            components::Transform3D transform{{1.f, 1.f, 1.f}, {1., 1., 1.}, {2, 2, 2} };
+            vulkan::PipelineWrapper::SimplePushConstantData push_data{};
+            push_data.transform = transform.as_matrix();
+            vkCmdPushConstants(cmd_buffer, m_pipeline_.get_pipeline_layout(), VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vulkan::PipelineWrapper::SimplePushConstantData), &push_data);
+            m_model_->bind(cmd_buffer);
+            m_model_->draw(cmd_buffer);
             // Add code to draw objects here
             m_renderer_.end_render_pass(cmd_buffer);
             m_renderer_.end_frame();
@@ -53,6 +116,23 @@ DynArray<char> StealthEngine::read_file(const char* file_name) {
     file.seekg(0, std::ios::beg);
     DynArray<char> buffer(file_size);
     file.read(buffer.data(), file_size);
+    file.close();
+    return buffer;
+}
+
+ArrayRef<char> StealthEngine::read_temporary_file(const char* file_name,
+    allocators::StackAllocator& allocator) {
+    std::ifstream file(file_name, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
+        throw std::runtime_error("Failed to open file");
+    }
+    file.seekg(0, std::ios::end);
+    const std::streamsize file_size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    const auto ptr = static_cast<char*>(allocator.allocate_raw(sizeof(char) * static_cast<uint32_t>(file_size)));
+    ArrayRef buffer{ptr, static_cast<size_t>(file_size)};
+    file.read(ptr, file_size);
     file.close();
     return buffer;
 }

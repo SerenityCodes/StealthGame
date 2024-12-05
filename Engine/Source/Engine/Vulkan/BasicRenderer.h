@@ -8,6 +8,8 @@
 namespace engine::vulkan {
 
 class BasicRenderer {
+    allocators::StackAllocator& m_allocator_;
+    void* m_swap_chain_mem_buffer_;
     Window* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
@@ -18,7 +20,7 @@ class BasicRenderer {
     uint32_t m_current_image_index_ = 0;
     bool m_is_frame_in_progress_ = false;
 public:
-    BasicRenderer(Window* window, DeviceWrapper* device, VkSurfaceKHR surface);
+    BasicRenderer(allocators::StackAllocator& allocator, Window* window, DeviceWrapper* device, VkSurfaceKHR surface);
     BasicRenderer(const BasicRenderer&) = delete;
     BasicRenderer(BasicRenderer&&) = delete;
     BasicRenderer& operator=(const BasicRenderer&) = delete;
