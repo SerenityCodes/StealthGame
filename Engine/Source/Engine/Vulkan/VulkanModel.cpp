@@ -31,7 +31,7 @@ get_attribute_descriptions() {
 }
 
 VulkanModel::VulkanModel(DeviceWrapper* device_wrapper,
-                         const ArrayRef<Vertex>& vertices) : m_device_wrapper_(device_wrapper) {
+                         const std::vector<Vertex, allocators::StackAllocator<Vertex>>& vertices) : m_device_wrapper_(device_wrapper) {
     m_vertex_count_ = static_cast<uint32_t>(vertices.size());
     assert(m_vertex_count_ > 3 && "Vertex count must be greater than 3");
     VkDeviceSize vertex_buffer_size = sizeof(Vertex) * m_vertex_count_;

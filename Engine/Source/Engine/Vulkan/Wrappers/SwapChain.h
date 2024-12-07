@@ -1,20 +1,21 @@
 ﻿#pragma once
 #include "DeviceWrapper.h"
 #include "SurfaceWrapper.h"
-#include "Engine/Containers/DynArray.h"
 
 namespace engine::vulkan {
 
 class SwapChain {
 public:
+    using SurfaceFormatAlloc = allocators::StackAllocator<void>::rebind<VkSurfaceFormatKHR>::other;
+    using PresentModeAlloc = allocators::StackAllocator<void>::rebind<VkPresentModeKHR>::other;
     struct SupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;
-        ArrayRef<VkSurfaceFormatKHR> formats;
-        ArrayRef<VkPresentModeKHR> present_modes;
+        allocators::stack_vec<VkSurfaceFormatKHR> formats;
+        allocators::stack_vec<VkPresentModeKHR> present_modes;
     };
 private:
-    allocators::StackAllocator& m_allocator_;
-    uint32_t* m_full_buffer_start_;
+    allocators::StackAllocator<void>* m_temp_allocator_;
+    uint8_t* m_full_buffer_start_;
     GLFWwindow* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
@@ -28,11 +29,15 @@ private:
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
-    SwapChain(void* array_buffer, allocators::StackAllocator& allocator, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
+    SwapChain(void* array_buffer, allocators::StackAllocator<void>* temp_allocator, allocators::StackAllocator<void>* setup_allocator, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
+    SwapChain(const SwapChain& other) = delete;
+    SwapChain& operator=(const SwapChain& other) = delete;
+    SwapChain(SwapChain&& swap_chain) = delete;
+    SwapChain& operator=(SwapChain&& swap_chain) = delete;
     ~SwapChain();
 
     void create_swap_chain();
-    void create_swap_chain_images();
+    void create_swap_chain_images(allocators::StackAllocator<void>& setup_allocator);
     void create_swap_chain_image_views();
     void create_frame_buffers(VkRenderPass render_pass);
     size_t get_image_views_count() const;
@@ -45,15 +50,14 @@ public:
     VkRenderPass create_render_pass() const;
     VkRenderPass get_current_render_pass() const;
 
-    uint32_t* get_starting_stack_pos() const;
+    uint8_t* get_starting_stack_pos() const;
 
     operator VkSwapchainKHR() const;
     
-    static VkSurfaceFormatKHR choose_swap_surface_format(const ArrayRef<VkSurfaceFormatKHR>& available_formats);
-    static VkPresentModeKHR choose_present_mode(const ArrayRef<VkPresentModeKHR>& available_present_modes);
+    static VkSurfaceFormatKHR choose_swap_surface_format(const allocators::stack_vec<VkSurfaceFormatKHR>& available_formats);
+    static VkPresentModeKHR choose_present_mode(const allocators::stack_vec<VkPresentModeKHR>& available_present_modes);
     static VkExtent2D choose_extent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
-    static SupportDetails create_support_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
-    static SupportDetails create_support_details(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device, size_t& bytes_allocated);
+    static SupportDetails create_support_details(const allocators::StackAllocator<void>& temp_allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
 };
 
 

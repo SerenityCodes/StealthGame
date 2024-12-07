@@ -5,17 +5,14 @@ template <typename T>
 class ArrayRef {
     T* m_data_;
     size_t m_size_;
-    bool m_owned_;
 public:
     ArrayRef() = default;
-    ArrayRef(const std::initializer_list<T>& init);
     ArrayRef(T* data, size_t size);
-    ArrayRef(T* data, size_t size, bool owned);
-    ArrayRef(const ArrayRef& other) = delete;
+    ArrayRef(const ArrayRef& other);
     ArrayRef(ArrayRef&& other) noexcept;
-    ArrayRef& operator=(const ArrayRef& other) = delete;
+    ArrayRef& operator=(const ArrayRef& other);
     ArrayRef& operator=(ArrayRef&& other) noexcept;
-    ~ArrayRef();
+    ~ArrayRef() = default;
     
     T& operator[](size_t index);
     T& operator[](size_t index) const;
@@ -96,33 +93,31 @@ public:
 };
 
 template <typename T>
-ArrayRef<T>::ArrayRef(const std::initializer_list<T>& init) {
-    m_data_ = new T[init.size()];
-    std::copy(init.begin(), init.end(), m_data_);
-    m_size_ = init.size();
-    m_owned_ = true;
-}
-
-template <typename T>
 ArrayRef<T>::ArrayRef(T* data, size_t size) {
     this->m_data_ = data;
     this->m_size_ = size;
-    this->m_owned_ = false;
 }
 
 template <typename T>
-ArrayRef<T>::ArrayRef(T* data, size_t size, bool owned) {
-    this->m_data_ = data;
-    this->m_size_ = size;
-    this->m_owned_ = owned;
+ArrayRef<T>::ArrayRef(const ArrayRef& other) {
+    this->m_data_ = other.m_data_;
+    this->m_size_ = other.m_size_;
 }
 
 template <typename T>
 ArrayRef<T>::ArrayRef(ArrayRef&& other) noexcept {
     this->m_data_ = other.m_data_;
     this->m_size_ = other.m_size_;
-    this->m_owned_ = other.m_owned_;
     other.m_data_ = nullptr;
+}
+
+template <typename T>
+ArrayRef<T>& ArrayRef<T>::operator=(const ArrayRef& other) {
+    if (this != &other) {
+        this->m_data_ = other.m_data_;
+        this->m_size_ = other.m_size_;
+    }
+    return *this;
 }
 
 template <typename T>
@@ -130,17 +125,9 @@ ArrayRef<T>& ArrayRef<T>::operator=(ArrayRef&& other) noexcept {
     if (this != &other) {
         this->m_data_ = other.m_data_;
         this->m_size_ = other.m_size_;
-        this->m_owned_ = other.m_owned_;
         other.m_data_ = nullptr;
     }
     return *this;
-}
-
-template <typename T>
-ArrayRef<T>::~ArrayRef() {
-    if (m_owned_) {
-        delete[] m_data_;
-    }
 }
 
 template <typename T>

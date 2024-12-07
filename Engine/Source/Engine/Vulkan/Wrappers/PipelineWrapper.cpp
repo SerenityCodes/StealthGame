@@ -7,11 +7,12 @@
 
 namespace engine::vulkan {
 
+using namespace allocators;
 
-PipelineWrapper::PipelineWrapper(allocators::StackAllocator& allocator, BasicRenderer* renderer, DeviceWrapper* device) : m_allocator_(allocator), m_device_(device),
+PipelineWrapper::PipelineWrapper(StackAllocator<void>& allocator, BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
     m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
-    ArrayRef<char> vertex_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.vert.spv", allocator);
-    ArrayRef<char> fragment_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.frag.spv", allocator);
+    stack_vec<char> vertex_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.vert.spv", allocator);
+    stack_vec<char> fragment_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.frag.spv", allocator);
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
@@ -148,8 +149,6 @@ PipelineWrapper::PipelineWrapper(allocators::StackAllocator& allocator, BasicRen
     if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline!");
     }
-    size_t bytes_to_free = sizeof(char) * vertex_shader_source.size() + sizeof(char) * fragment_shader_source.size();
-    allocator.free_bytes(bytes_to_free);
 }
 
 PipelineWrapper::~PipelineWrapper() {
@@ -176,7 +175,7 @@ VkShaderModule PipelineWrapper::get_fragment_shader() const {
     return m_fragment_shader_;
 }
 
-void PipelineWrapper::bind(VkCommandBuffer command_buffer) {
+void PipelineWrapper::bind(VkCommandBuffer command_buffer) const {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_);
 }
 
@@ -184,11 +183,11 @@ void PipelineWrapper::draw(VkCommandBuffer command_buffer) {
     vkCmdDraw(command_buffer, 3, 1, 0, 0);
 }
 
-VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<char>& code) {
+VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const stack_vec<char>& code) {
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<uint32_t*>(code.data());
+    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
     VkShaderModule shader_module = VK_NULL_HANDLE;
     if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {

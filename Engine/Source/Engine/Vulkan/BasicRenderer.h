@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <memory>
 
 #include "Engine/Containers/ObjectHolder.h"
 #include "Wrappers/CommandBufferWrapper.h"
@@ -9,8 +8,10 @@
 namespace engine::vulkan {
 
 class BasicRenderer {
-    allocators::StackAllocator& m_allocator_;
     void* m_swap_chain_mem_buffer_;
+    allocators::StackAllocator<void>* m_temp_allocator_;
+    allocators::StackAllocator<void>* m_setup_allocator_;
+    
     Window* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
@@ -21,7 +22,9 @@ class BasicRenderer {
     uint32_t m_current_image_index_ = 0;
     bool m_is_frame_in_progress_ = false;
 public:
-    BasicRenderer(allocators::StackAllocator& allocator, Window* window, DeviceWrapper* device, VkSurfaceKHR surface);
+    using Allocator = allocators::StackAllocator<void>;
+    
+    BasicRenderer(Allocator* temp, Allocator* setup, Window* window, DeviceWrapper* device, VkSurfaceKHR surface);
     BasicRenderer(const BasicRenderer&) = delete;
     BasicRenderer(BasicRenderer&&) = delete;
     BasicRenderer& operator=(const BasicRenderer&) = delete;
