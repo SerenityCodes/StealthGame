@@ -1,27 +1,16 @@
 ﻿#include "SwapChain.h"
 
 #include <stdexcept>
-#include <glm/common.hpp>
 
 namespace engine::vulkan {
 
-SwapChain::SwapChain(
-    void* array_buffer,
-    allocators::StackAllocator<void>* temp_allocator,
-    allocators::StackAllocator<void>* setup_allocator,
-    GLFWwindow* window,
-    VkSurfaceKHR surface,
-    DeviceWrapper* device) : m_temp_allocator_(temp_allocator),
-        m_full_buffer_start_(static_cast<uint8_t*>(array_buffer)),
-        m_window_(window),
-        m_device_(device),
-        m_surface_(surface),
-        m_swap_chain_(nullptr), m_render_pass_(nullptr) {
-        create_swap_chain();
-        create_swap_chain_images(*setup_allocator);
-        create_swap_chain_image_views();
-        m_render_pass_ = create_render_pass();
-        create_frame_buffers(m_render_pass_);
+SwapChain::SwapChain(void* array_buffer, allocators::StackAllocator& allocator, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device) : m_allocator_(allocator), m_full_buffer_start_(static_cast<uint32_t*>(array_buffer)), m_window_(window), m_device_(device), m_surface_(surface),
+    m_swap_chain_(nullptr), m_render_pass_(nullptr) {
+    create_swap_chain();
+    create_swap_chain_images();
+    create_swap_chain_image_views();
+    m_render_pass_ = create_render_pass();
+    create_frame_buffers(m_render_pass_);
 }
 
 SwapChain::~SwapChain() {
@@ -43,7 +32,9 @@ SwapChain::~SwapChain() {
 }
 
 void SwapChain::create_swap_chain() {
-    SupportDetails support_details = create_support_details(*m_temp_allocator_, m_surface_, m_device_->get_physical_device());
+    size_t temp_bytes_allocated = 0;
+    SupportDetails support_details = create_support_details(m_allocator_, m_surface_, m_device_->get_physical_device(), temp_bytes_allocated);
+    m_allocator_.free_bytes(temp_bytes_allocated);
     VkSurfaceFormatKHR surface_format = choose_swap_surface_format(support_details.formats);
     VkPresentModeKHR present_mode = choose_present_mode(support_details.present_modes);
     VkExtent2D swap_chain_extent = choose_extent(m_window_, support_details.capabilities);
@@ -63,7 +54,7 @@ void SwapChain::create_swap_chain() {
     swap_chain_create_info.imageArrayLayers = 1;
     swap_chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(*m_temp_allocator_, m_surface_, m_device_->get_physical_device());
+    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(m_allocator_, m_surface_, m_device_->get_physical_device());
     uint32_t queue_family_indices[] = {family.graphics_family_index, family.present_family_index};
     if (queue_family_indices[0] == queue_family_indices[1]) {
         swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -86,13 +77,11 @@ void SwapChain::create_swap_chain() {
     m_swap_chain_extent_ = swap_chain_extent;
 }
 
-void SwapChain::create_swap_chain_images(allocators::StackAllocator<void>& setup_allocator) {
+void SwapChain::create_swap_chain_images() {
     vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, nullptr);
     if (m_full_buffer_start_ == nullptr) {
-        using ByteAllocatorType = std::allocator_traits<allocators::StackAllocator<void>>::rebind_alloc<uint8_t>;
-        ByteAllocatorType byte_allocator{setup_allocator};
         size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * m_image_count_;
-        m_full_buffer_start_ = byte_allocator.allocate(bytes_for_all_images);
+        m_full_buffer_start_ = static_cast<uint32_t*>(m_allocator_.allocate_raw(bytes_for_all_images));
     }
     VkImage* arr_ptr = reinterpret_cast<VkImage*>(m_full_buffer_start_);
     m_images_ = ArrayRef(arr_ptr, m_image_count_);
@@ -216,8 +205,8 @@ VkRenderPass SwapChain::get_current_render_pass() const {
     return m_render_pass_;
 }
 
-uint8_t* SwapChain::get_starting_stack_pos() const {
-    return m_full_buffer_start_;
+uint32_t* SwapChain::get_starting_stack_pos() const {
+    return static_cast<uint32_t*>(m_full_buffer_start_);
 }
 
 SwapChain::operator VkSwapchainKHR() const {
@@ -225,7 +214,7 @@ SwapChain::operator VkSwapchainKHR() const {
 }
 
 VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
-    const allocators::stack_vec<VkSurfaceFormatKHR>& available_formats) {
+    const ArrayRef<VkSurfaceFormatKHR>& available_formats) {
     for (const auto& available_format : available_formats) {
         if (available_format.format == VK_FORMAT_B8G8R8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             return available_format;
@@ -235,7 +224,7 @@ VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
 }
 
 VkPresentModeKHR SwapChain::choose_present_mode(
-    const allocators::stack_vec<VkPresentModeKHR>& available_present_modes) {
+    const ArrayRef<VkPresentModeKHR>& available_present_modes) {
     for (const auto& available_present_mode : available_present_modes) {
         if (available_present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             return available_present_mode;
@@ -256,27 +245,54 @@ VkExtent2D SwapChain::choose_extent(GLFWwindow* window, const VkSurfaceCapabilit
         static_cast<uint32_t>(height)
     };
 
-    actual_extent.width = glm::clamp(actual_extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-    actual_extent.height = glm::clamp(actual_extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    actual_extent.width = std::clamp(actual_extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actual_extent.height = std::clamp(actual_extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
     return actual_extent;
 }
 
+SwapChain::SupportDetails SwapChain::create_support_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device) {
+    VkSurfaceCapabilitiesKHR capabilities_khr{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities_khr);
+    uint32_t format_count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+    uint32_t present_mode_count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
+    VkSurfaceFormatKHR* surface_format_ptr = nullptr;
+    if (format_count != 0) {
+        surface_format_ptr = new VkSurfaceFormatKHR[format_count];
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, surface_format_ptr);
+    }
+    VkPresentModeKHR* present_modes_ptr = nullptr;
+    if (present_mode_count != 0) {
+        present_modes_ptr = new VkPresentModeKHR[present_mode_count];
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes_ptr);
+    }
+    return {.capabilities = capabilities_khr,
+        .formats = ArrayRef{surface_format_ptr, format_count, true},
+        .present_modes = ArrayRef{present_modes_ptr, present_mode_count, true}};
+}
+
 SwapChain::SupportDetails SwapChain::create_support_details(
-    const allocators::StackAllocator<void>& temp_allocator, VkSurfaceKHR surface,
-    VkPhysicalDevice physical_device) {
+    allocators::StackAllocator& allocator, VkSurfaceKHR surface,
+    VkPhysicalDevice physical_device, size_t& bytes_allocated) {
     VkSurfaceCapabilitiesKHR capabilities_khr;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities_khr);
     uint32_t format_count = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
     uint32_t present_mode_count = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
-    allocators::stack_vec<VkSurfaceFormatKHR> formats{format_count, temp_allocator};
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
-    allocators::stack_vec<VkPresentModeKHR> present_modes{present_mode_count, temp_allocator};
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data());
+    size_t surface_format_bytes = sizeof(VkSurfaceFormatKHR) * format_count;
+    size_t surface_present_mode_bytes = sizeof(VkPresentModeKHR) * present_mode_count;
+    size_t total_alloc_size = surface_format_bytes + surface_present_mode_bytes;
+    bytes_allocated = total_alloc_size;
+    VkSurfaceFormatKHR* formats = static_cast<VkSurfaceFormatKHR*>(allocator.allocate_raw(surface_format_bytes));
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats);
+    VkPresentModeKHR* present_modes = static_cast<VkPresentModeKHR*>(allocator.allocate_raw(surface_present_mode_bytes));
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes);
     return {.capabilities = capabilities_khr,
-        .formats = std::move(formats),
-        .present_modes = std::move(present_modes)};
-    };
+        .formats = ArrayRef{formats, format_count},
+        .present_modes = ArrayRef{present_modes, present_mode_count}};
+}
+
 }

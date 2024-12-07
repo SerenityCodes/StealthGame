@@ -22,8 +22,9 @@ private:
     VkBuffer m_vertex_buffer_;
     VkDeviceMemory m_vertex_buffer_memory_;
     uint32_t m_vertex_count_;
+
 public:
-    VulkanModel(DeviceWrapper* device_wrapper, const std::vector<Vertex, allocators::StackAllocator<Vertex>>& vertices);
+    VulkanModel(DeviceWrapper* device_wrapper, const ArrayRef<Vertex>& vertices);
     ~VulkanModel();
 
     VulkanModel(const VulkanModel&) = delete;

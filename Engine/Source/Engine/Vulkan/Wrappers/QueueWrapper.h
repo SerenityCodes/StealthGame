@@ -26,7 +26,7 @@ public:
     ~QueueWrapper() = default;
 
     operator VkQueue() const;
-    static QueueFamily find_indices(const allocators::StackAllocator<void>& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
+    static QueueFamily find_indices(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
     uint32_t graphics_family_index() const;
 };
 

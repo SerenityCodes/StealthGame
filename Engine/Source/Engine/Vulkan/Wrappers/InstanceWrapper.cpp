@@ -9,13 +9,14 @@
 
 namespace engine::vulkan {
 
-bool check_validation_layer_support(InstanceWrapper::VkLayerAlloc& allocator, const std::array<const char*, 1>& needed_layers) {
+bool check_validation_layer_support(allocators::StackAllocator& allocator, const std::array<const char*, 1>& needed_layers) {
     
     uint32_t layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-    std::vector<VkLayerProperties, InstanceWrapper::VkLayerAlloc> available_layers(layer_count, allocator);
-    vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
+    auto available_layers_arr = allocator.allocate(sizeof(VkLayerProperties), layer_count);
+    ArrayRef available_layers(available_layers_arr.get<VkLayerProperties>(), layer_count);
+    vkEnumerateInstanceLayerProperties(&layer_count, available_layers_arr.get<VkLayerProperties>());
     
     for (const auto& needed_layer : needed_layers) {
         bool layer_found = false;
@@ -32,11 +33,11 @@ bool check_validation_layer_support(InstanceWrapper::VkLayerAlloc& allocator, co
     return true;
 }
 
-InstanceWrapper::InstanceWrapper(VkLayerAlloc temp_allocator, bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}) {
+InstanceWrapper::InstanceWrapper(allocators::StackAllocator& allocator, bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}), m_allocator_(allocator) {
     if (!enable_validation_layers) {
         m_enabled_validation_layers_ = {};
     }
-    if (enable_validation_layers && !check_validation_layer_support(temp_allocator, m_enabled_validation_layers_)) {
+    if (enable_validation_layers && !check_validation_layer_support(allocator, m_enabled_validation_layers_)) {
         assert(false);
     }
     

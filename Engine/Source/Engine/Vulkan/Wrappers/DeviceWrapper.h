@@ -14,9 +14,7 @@ class DeviceWrapper {
     QueueWrapper m_present_queue_;
     QueueWrapper::QueueFamily m_graphics_queue_family_;
 public:
-    using PhysicalDeviceAllocator = allocators::StackAllocator<void>::rebind<VkPhysicalDevice>::other;
-    
-    DeviceWrapper(const allocators::StackAllocator<void>& allocator, VkSurfaceKHR surface, VkInstance instance, const std::array<const char*, 1>& validation_layers);
+    DeviceWrapper(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkInstance instance, const std::array<const char*, 1>& validation_layers);
     ~DeviceWrapper();
 
     operator VkDevice() const;

@@ -1,9 +1,10 @@
 ﻿#include "VulkanWrapper.h"
 
 namespace engine::vulkan {
-VulkanWrapper::VulkanWrapper(allocators::StackAllocator<void>& allocator) : m_allocator_(allocator),
+
+VulkanWrapper::VulkanWrapper(allocators::StackAllocator& allocator) : m_allocator_(allocator),
     window_(1000, 800, "Vulkan Window"),
-    m_instance_(InstanceWrapper::VkLayerAlloc{m_allocator_}, true),
+    m_instance_(m_allocator_, true),
     m_validation_layers_(m_instance_.enabled_validation_layers()),
     m_surface_(m_instance_, window_.raw_window()),
     m_device_(m_allocator_, m_surface_, m_instance_, m_validation_layers_)

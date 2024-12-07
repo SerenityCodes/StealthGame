@@ -9,14 +9,14 @@
 namespace engine::vulkan {
 
 class VulkanWrapper {
-    allocators::StackAllocator<void>& m_allocator_;
+    allocators::StackAllocator& m_allocator_;
     Window window_;
     InstanceWrapper m_instance_;
     std::array<const char*, 1> m_validation_layers_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
 public:
-    VulkanWrapper(allocators::StackAllocator<void>& allocator);
+    VulkanWrapper(allocators::StackAllocator& allocator);
     VulkanWrapper(const VulkanWrapper&) = delete;
     VulkanWrapper(VulkanWrapper&&) = delete;
     VulkanWrapper& operator=(const VulkanWrapper&) = delete;

@@ -5,9 +5,7 @@
 
 namespace engine::vulkan {
 
-BasicRenderer::BasicRenderer(Allocator* temp, Allocator* setup, Window* window, DeviceWrapper* device, VkSurfaceKHR surface) :
-    m_swap_chain_mem_buffer_(nullptr), m_temp_allocator_(temp),
-    m_setup_allocator_(setup), m_window_(window), m_device_(device),
+BasicRenderer::BasicRenderer(allocators::StackAllocator& allocator, Window* window, DeviceWrapper* device, VkSurfaceKHR surface) : m_allocator_(allocator), m_swap_chain_mem_buffer_(nullptr), m_window_(window), m_device_(device),
     m_surface_(surface), m_swap_chain_(initialize_swap_chain()), m_command_buffer_(device, m_swap_chain_.get()) {
 }
 
@@ -110,13 +108,13 @@ float BasicRenderer::get_aspect_ratio() const {
 
 ObjectHolder<SwapChain> BasicRenderer::initialize_swap_chain() {
     vkDeviceWaitIdle(*m_device_);
-    ObjectHolder<SwapChain> new_swap_chain{m_swap_chain_mem_buffer_, m_temp_allocator_, m_setup_allocator_, m_window_->raw_window(), m_surface_, m_device_};
+    ObjectHolder<SwapChain> new_swap_chain{m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_};
     return new_swap_chain;
 }
 
 void BasicRenderer::recreate_swap_chain() {
     vkDeviceWaitIdle(*m_device_);
-    m_swap_chain_.emplace(m_swap_chain_mem_buffer_, m_temp_allocator_, m_setup_allocator_, m_window_->raw_window(), m_surface_, m_device_);
+    m_swap_chain_.emplace(m_swap_chain_mem_buffer_, m_allocator_, m_window_->raw_window(), m_surface_, m_device_);
 }
 
 }
