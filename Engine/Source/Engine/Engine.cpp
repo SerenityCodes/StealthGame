@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "Components/Transform3D.h"
+#include "Containers/DynArray.h"
 
 void* operator new(size_t size) {
     std::cout << "Allocated " << std::dec << size << " bytes\n";
@@ -84,12 +85,13 @@ std::unique_ptr<vulkan::VulkanModel> make_cube(vulkan::DeviceWrapper* device, gl
     return std::make_unique<vulkan::VulkanModel>(device, std::move(vertices));
 }
 
-StealthEngine::StealthEngine() : m_allocator_(default_stack_size), m_vulkan_wrapper_(m_allocator_), m_renderer_(m_allocator_, &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(m_allocator_, &m_renderer_, m_vulkan_wrapper_.device()), m_model_(make_cube(m_vulkan_wrapper_.device(), {0, 0, 0})) { }
+StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
+                                 m_permanent_arena_(default_stack_size), m_vulkan_wrapper_(m_temp_arena_), m_renderer_(m_temp_arena_, m_permanent_arena_, &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()), m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device()), m_model_(make_cube(m_vulkan_wrapper_.device(), {0, 0, 0})) { }
 
 void StealthEngine::run() {
     while (!m_vulkan_wrapper_.window().should_close()) {
         m_vulkan_wrapper_.window().glfw_poll_events();
-        if (auto cmd_buffer = m_renderer_.begin_frame()) {
+        if (auto cmd_buffer = m_renderer_.begin_frame(m_temp_arena_, m_permanent_arena_)) {
             m_renderer_.begin_render_pass(cmd_buffer);
             m_pipeline_.bind(cmd_buffer);
             components::Transform3D transform{{1.f, 1.f, 1.f}, {1., 1., 1.}, {2, 2, 2} };
@@ -100,12 +102,12 @@ void StealthEngine::run() {
             m_model_->draw(cmd_buffer);
             // Add code to draw objects here
             m_renderer_.end_render_pass(cmd_buffer);
-            m_renderer_.end_frame();
+            m_renderer_.end_frame(m_temp_arena_, m_permanent_arena_);
         }
     }
 }
 
-DynArray<char> StealthEngine::read_file(const char* file_name) {
+ArrayRef<char> StealthEngine::read_temporary_file(Arena& temp_file, const char* file_name) {
     std::ifstream file(file_name, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
@@ -114,23 +116,8 @@ DynArray<char> StealthEngine::read_file(const char* file_name) {
     file.seekg(0, std::ios::end);
     const std::streamsize file_size = file.tellg();
     file.seekg(0, std::ios::beg);
-    DynArray<char> buffer(file_size);
-    file.read(buffer.data(), file_size);
-    file.close();
-    return buffer;
-}
-
-ArrayRef<char> StealthEngine::read_temporary_file(const char* file_name,
-    allocators::StackAllocator& allocator) {
-    std::ifstream file(file_name, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
-        throw std::runtime_error("Failed to open file");
-    }
-    file.seekg(0, std::ios::end);
-    const std::streamsize file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-    const auto ptr = static_cast<char*>(allocator.allocate_raw(sizeof(char) * static_cast<uint32_t>(file_size)));
+    const size_t bytes_needed = sizeof(char) * file_size;
+    const auto ptr = static_cast<char*>(temp_file.push(bytes_needed));
     ArrayRef buffer{ptr, static_cast<size_t>(file_size)};
     file.read(ptr, file_size);
     file.close();

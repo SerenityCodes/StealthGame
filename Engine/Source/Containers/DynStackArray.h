@@ -4,17 +4,17 @@
 namespace engine::containers {
 
 template <typename T>
-class StackArray {
+class DynStackArray {
     T* m_data_ptr_;
     size_t m_size_;
     size_t m_capacity_;
 public:
-    explicit StackArray(size_t size);
-    StackArray(const StackArray& other) = delete;
-    StackArray& operator=(const StackArray& other) = delete;
-    StackArray(StackArray&& other) noexcept;
-    StackArray& operator=(StackArray&& other) noexcept;
-    ~StackArray();
+    explicit DynStackArray(size_t size);
+    DynStackArray(const DynStackArray& other) = delete;
+    DynStackArray& operator=(const DynStackArray& other) = delete;
+    DynStackArray(DynStackArray&& other) noexcept;
+    DynStackArray& operator=(DynStackArray&& other) noexcept;
+    ~DynStackArray();
 
     bool push(const T& element);
     T pop();
@@ -22,21 +22,21 @@ public:
 };
 
 template <typename T>
-StackArray<T>::StackArray(size_t size) {
+DynStackArray<T>::DynStackArray(size_t size) {
     m_data_ptr_ = new T[size];
     m_size_ = 0;
     m_capacity_ = size;
 }
 
 template <typename T>
-StackArray<T>::StackArray(StackArray&& other) noexcept {
+DynStackArray<T>::DynStackArray(DynStackArray&& other) noexcept {
     m_data_ptr_ = other.m_data_ptr_;
     m_size_ = other.m_size_;
     m_capacity_ = other.m_capacity_;
 }
 
 template <typename T>
-StackArray<T>& StackArray<T>::operator=(StackArray&& other) noexcept {
+DynStackArray<T>& DynStackArray<T>::operator=(DynStackArray&& other) noexcept {
     if (this != &other) {
         delete[] m_data_ptr_;
         m_data_ptr_ = other.m_data_ptr_;
@@ -47,12 +47,12 @@ StackArray<T>& StackArray<T>::operator=(StackArray&& other) noexcept {
 }
 
 template <typename T>
-StackArray<T>::~StackArray() {
+DynStackArray<T>::~DynStackArray() {
     delete[] m_data_ptr_;
 }
 
 template <typename T>
-bool StackArray<T>::push(const T& element) {
+bool DynStackArray<T>::push(const T& element) {
     if (m_size_ >= m_capacity_) {
         return false;
     }
@@ -61,7 +61,7 @@ bool StackArray<T>::push(const T& element) {
 }
 
 template <typename T>
-T StackArray<T>::pop() {
+T DynStackArray<T>::pop() {
     if (m_size_ == 0) {
         return T();
     }
@@ -69,7 +69,7 @@ T StackArray<T>::pop() {
 }
 
 template <typename T>
-bool StackArray<T>::empty() const {
+bool DynStackArray<T>::empty() const {
     return m_size_ == 0;
 }
 

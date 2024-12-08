@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include "DeviceWrapper.h"
 #include "SurfaceWrapper.h"
-#include "Engine/Containers/DynArray.h"
+#include "Containers/ArrayRef.h"
+#include "MemoryArena/Arena.h"
 
 namespace engine::vulkan {
 
@@ -13,7 +14,6 @@ public:
         ArrayRef<VkPresentModeKHR> present_modes;
     };
 private:
-    allocators::StackAllocator& m_allocator_;
     uint32_t* m_full_buffer_start_;
     GLFWwindow* m_window_;
     DeviceWrapper* m_device_;
@@ -28,11 +28,11 @@ private:
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
-    SwapChain(void* array_buffer, allocators::StackAllocator& allocator, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
+    SwapChain(void* array_buffer, Arena& temp_arena, Arena& permanent_arena, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
     ~SwapChain();
 
-    void create_swap_chain();
-    void create_swap_chain_images();
+    void create_swap_chain(Arena& temp_arena);
+    void create_swap_chain_images(Arena& permanent_arena);
     void create_swap_chain_image_views();
     void create_frame_buffers(VkRenderPass render_pass);
     size_t get_image_views_count() const;
@@ -52,8 +52,7 @@ public:
     static VkSurfaceFormatKHR choose_swap_surface_format(const ArrayRef<VkSurfaceFormatKHR>& available_formats);
     static VkPresentModeKHR choose_present_mode(const ArrayRef<VkPresentModeKHR>& available_present_modes);
     static VkExtent2D choose_extent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
-    static SupportDetails create_support_details(VkSurfaceKHR surface, VkPhysicalDevice physical_device);
-    static SupportDetails create_support_details(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device, size_t& bytes_allocated);
+    static SupportDetails create_support_details(Arena& arena, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
 };
 
 

@@ -8,10 +8,10 @@
 namespace engine::vulkan {
 
 
-PipelineWrapper::PipelineWrapper(allocators::StackAllocator& allocator, BasicRenderer* renderer, DeviceWrapper* device) : m_allocator_(allocator), m_device_(device),
+PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
     m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
-    ArrayRef<char> vertex_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.vert.spv", allocator);
-    ArrayRef<char> fragment_shader_source = StealthEngine::read_temporary_file("../Engine/Shaders/triangle.frag.spv", allocator);
+    ArrayRef<char> vertex_shader_source = StealthEngine::read_temporary_file(temp_arena, "../Engine/Shaders/triangle.vert.spv");
+    ArrayRef<char> fragment_shader_source = StealthEngine::read_temporary_file(temp_arena, "../Engine/Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
@@ -148,8 +148,6 @@ PipelineWrapper::PipelineWrapper(allocators::StackAllocator& allocator, BasicRen
     if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline!");
     }
-    size_t bytes_to_free = sizeof(char) * vertex_shader_source.size() + sizeof(char) * fragment_shader_source.size();
-    allocator.free_bytes(bytes_to_free);
 }
 
 PipelineWrapper::~PipelineWrapper() {

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 
-#include "Engine/Containers/StackArray.h"
+#include "Containers/DynStackArray.h"
 
 namespace engine::allocators {
 
@@ -9,7 +9,7 @@ class PoolAllocator {
     uint8_t* m_starting_pool_;
     size_t m_chunks_;
     size_t m_chunk_size_;
-    containers::StackArray<size_t> m_free_list_;
+    containers::DynStackArray<size_t> m_free_list_;
 public:
     PoolAllocator(size_t chunks, size_t chunk_size);
     PoolAllocator(const PoolAllocator&) = delete;

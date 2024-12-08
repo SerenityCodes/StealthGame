@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include <cstdint>
-#include <utility>
 
+#include <cstdint>
+#include <memory>
 template <typename T>
 class ObjectHolder {
     alignas(T) uint8_t m_data_[sizeof(T)]{};

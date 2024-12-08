@@ -3,20 +3,19 @@
 #include <cassert>
 #include <cstring>
 
-#include "Engine/Containers/ArrayRef.h"
-#include "Engine/Containers/DynArray.h"
+#include "Containers/ArrayRef.h"
 #include "GLFW/glfw3.h"
 
 namespace engine::vulkan {
 
-bool check_validation_layer_support(allocators::StackAllocator& allocator, const std::array<const char*, 1>& needed_layers) {
+bool check_validation_layer_support(Arena& temp_arena, const std::array<const char*, 1>& needed_layers) {
     
     uint32_t layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-    auto available_layers_arr = allocator.allocate(sizeof(VkLayerProperties), layer_count);
-    ArrayRef available_layers(available_layers_arr.get<VkLayerProperties>(), layer_count);
-    vkEnumerateInstanceLayerProperties(&layer_count, available_layers_arr.get<VkLayerProperties>());
+    VkLayerProperties* available_layers_arr = static_cast<VkLayerProperties*>(temp_arena.push(sizeof(VkLayerProperties) * layer_count));
+    ArrayRef available_layers(available_layers_arr, layer_count);
+    vkEnumerateInstanceLayerProperties(&layer_count, available_layers_arr);
     
     for (const auto& needed_layer : needed_layers) {
         bool layer_found = false;
@@ -33,20 +32,20 @@ bool check_validation_layer_support(allocators::StackAllocator& allocator, const
     return true;
 }
 
-InstanceWrapper::InstanceWrapper(allocators::StackAllocator& allocator, bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}), m_allocator_(allocator) {
+InstanceWrapper::InstanceWrapper(Arena& temp_arena, bool enable_validation_layers) : m_enabled_validation_layers_({"VK_LAYER_KHRONOS_validation"}) {
     if (!enable_validation_layers) {
         m_enabled_validation_layers_ = {};
     }
-    if (enable_validation_layers && !check_validation_layer_support(allocator, m_enabled_validation_layers_)) {
+    if (enable_validation_layers && !check_validation_layer_support(temp_arena, m_enabled_validation_layers_)) {
         assert(false);
     }
     
     VkApplicationInfo app_info{};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "StealthEngine";
-    app_info.applicationVersion = 1;
+    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName = "StealthEngine";
-    app_info.engineVersion = 1;
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_3;
     app_info.pNext = nullptr;
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);

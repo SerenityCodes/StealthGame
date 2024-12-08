@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <limits>
 
-#include "Engine/Allocators/StackAllocator.h"
+#include "MemoryArena/Arena.h"
 
 namespace engine::vulkan {
 
@@ -26,7 +26,7 @@ public:
     ~QueueWrapper() = default;
 
     operator VkQueue() const;
-    static QueueFamily find_indices(allocators::StackAllocator& allocator, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
+    static QueueFamily find_indices(Arena& temp_arena, VkSurfaceKHR surface, VkPhysicalDevice physical_device);
     uint32_t graphics_family_index() const;
 };
 

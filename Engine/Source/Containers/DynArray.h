@@ -1,18 +1,14 @@
 ﻿#pragma once
 
 #include <algorithm>
-#include <cstdint>
 #include <functional>
 #include <initializer_list>
 #include <iterator>
-
-#include "Engine/Allocators/StackAllocator.h"
 
 template <typename T>
 class DynArray {
     size_t m_size_;
     T* m_data_ptr_;
-
 public:
     class iterator {
     public:

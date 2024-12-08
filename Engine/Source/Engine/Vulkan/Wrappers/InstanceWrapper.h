@@ -4,17 +4,15 @@
 
 #include <array>
 
-#include "Engine/Containers/ArrayRef.h"
-#include "Engine/Containers/DynArray.h"
+#include "MemoryArena/Arena.h"
 
 namespace engine::vulkan {
 
 class InstanceWrapper {
     VkInstance m_instance_;
     std::array<const char*, 1> m_enabled_validation_layers_;
-    allocators::StackAllocator& m_allocator_;
 public:
-    InstanceWrapper(allocators::StackAllocator& allocator, bool enable_validation_layers);
+    InstanceWrapper(Arena& temp_arena, bool enable_validation_layers);
     InstanceWrapper(const InstanceWrapper&) = delete;
     InstanceWrapper(InstanceWrapper&&) = delete;
     InstanceWrapper& operator=(const InstanceWrapper&) = delete;

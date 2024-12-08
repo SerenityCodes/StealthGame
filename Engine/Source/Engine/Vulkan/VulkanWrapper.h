@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "Engine/Containers/ArrayRef.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
 #include "Wrappers/SurfaceWrapper.h"
@@ -9,14 +8,13 @@
 namespace engine::vulkan {
 
 class VulkanWrapper {
-    allocators::StackAllocator& m_allocator_;
     Window window_;
     InstanceWrapper m_instance_;
     std::array<const char*, 1> m_validation_layers_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
 public:
-    VulkanWrapper(allocators::StackAllocator& allocator);
+    VulkanWrapper(Arena& temp_arena);
     VulkanWrapper(const VulkanWrapper&) = delete;
     VulkanWrapper(VulkanWrapper&&) = delete;
     VulkanWrapper& operator=(const VulkanWrapper&) = delete;

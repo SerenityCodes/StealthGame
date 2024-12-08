@@ -17,14 +17,13 @@ public:
         glm::mat4 transform;
     };
 private:
-    allocators::StackAllocator& m_allocator_;
     DeviceWrapper* m_device_;
     VkShaderModule m_vertex_shader_;
     VkShaderModule m_fragment_shader_;
     VkPipelineLayout m_pipeline_layout_;
     VkPipeline m_pipeline_;
 public:
-    PipelineWrapper(allocators::StackAllocator& allocator, BasicRenderer* renderer, DeviceWrapper* device);
+    PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, DeviceWrapper* device);
     ~PipelineWrapper();
     
     VkPipelineLayout get_pipeline_layout() const;
