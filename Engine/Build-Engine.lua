@@ -5,7 +5,7 @@ project "Engine"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Vendor/entt/**.hpp" }
+   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Vendor/flecs/**.hpp", "Vendor/flecs/**.c" }
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
    

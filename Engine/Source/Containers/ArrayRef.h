@@ -1,13 +1,15 @@
 ﻿#pragma once
 #include <iterator>
 
+#include "MemoryArena/Arena.h"
+
 template <typename T>
 class ArrayRef {
     T* m_data_;
     size_t m_size_;
 public:
     ArrayRef() = default;
-    ArrayRef(const std::initializer_list<T>& init);
+    ArrayRef(const std::initializer_list<T>& init, Arena& arena);
     ArrayRef(T* data, size_t size);
     ArrayRef(const ArrayRef& other) = delete;
     ArrayRef(ArrayRef&& other) noexcept;
@@ -94,8 +96,8 @@ public:
 };
 
 template <typename T>
-ArrayRef<T>::ArrayRef(const std::initializer_list<T>& init) {
-    m_data_ = new T[init.size()];
+ArrayRef<T>::ArrayRef(const std::initializer_list<T>& init, Arena& arena) {
+    m_data_ = static_cast<T*>(arena.push(init.size() * sizeof(T)));
     std::copy(init.begin(), init.end(), m_data_);
     m_size_ = init.size();
 }
