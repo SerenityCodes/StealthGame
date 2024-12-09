@@ -174,12 +174,8 @@ VkShaderModule PipelineWrapper::get_fragment_shader() const {
     return m_fragment_shader_;
 }
 
-void PipelineWrapper::bind(VkCommandBuffer command_buffer) {
+void PipelineWrapper::bind(VkCommandBuffer command_buffer) const {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_);
-}
-
-void PipelineWrapper::draw(VkCommandBuffer command_buffer) {
-    vkCmdDraw(command_buffer, 3, 1, 0, 0);
 }
 
 VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<char>& code) {

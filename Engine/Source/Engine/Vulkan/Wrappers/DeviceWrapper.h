@@ -25,7 +25,7 @@ public:
     QueueWrapper::QueueFamily get_graphics_queue_family() const;
 
     uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const;
-    void create_buffer(VkDeviceSize size, VkBufferUsageFlags flags, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory) const;
+    void create_buffer(VkDeviceSize size, VkBufferUsageFlags flags, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* buffer_memory) const;
 };
 
 }

@@ -64,18 +64,18 @@ DeviceWrapper::DeviceWrapper(Arena& temp_arena, VkSurfaceKHR surface, VkInstance
     m_graphics_queue_family_ = family;
     uint32_t indices[] = {family.graphics_family_index, family.present_family_index};
     VkDeviceQueueCreateInfo* create_infos;
-    VkDeviceQueueCreateInfo stack_create_infos[2];
     int queue_create_count;
     float queue_priority = 1.0f;
     if (indices[0] != indices[1]) {
+        VkDeviceQueueCreateInfo stack_create_infos[2];
         queue_create_count = 2;
         create_infos = stack_create_infos;
         for (int i = 0; i < 2; i++) {
-            create_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            create_infos[i].queueFamilyIndex = indices[i];
-            create_infos[i].queueCount = 1;
-            create_infos->pQueuePriorities = &queue_priority;
-            create_infos[i].pNext = nullptr;
+            stack_create_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            stack_create_infos[i].queueFamilyIndex = indices[i];
+            stack_create_infos[i].queueCount = 1;
+            stack_create_infos->pQueuePriorities = &queue_priority;
+            stack_create_infos[i].pNext = nullptr;
         }
     } else {
         queue_create_count = 1;
@@ -156,30 +156,30 @@ uint32_t DeviceWrapper::find_memory_type(uint32_t type_filter, VkMemoryPropertyF
 }
 
 void DeviceWrapper::create_buffer(VkDeviceSize size, VkBufferUsageFlags flags,
-    VkMemoryPropertyFlags properties, VkBuffer& buffer,
-    VkDeviceMemory& buffer_memory) const {
+    VkMemoryPropertyFlags properties, VkBuffer* buffer,
+    VkDeviceMemory* buffer_memory) const {
     VkBufferCreateInfo buffer_create_info{};
     buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_create_info.size = size;
     buffer_create_info.usage = flags;
     buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(m_device_, &buffer_create_info, nullptr, &buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(m_device_, &buffer_create_info, nullptr, buffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to create buffer!");
     }
 
     VkMemoryRequirements memory_requirements;
-    vkGetBufferMemoryRequirements(m_device_, buffer, &memory_requirements);
+    vkGetBufferMemoryRequirements(m_device_, *buffer, &memory_requirements);
     VkMemoryAllocateInfo memory_allocate_info{};
     memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memory_allocate_info.allocationSize = memory_requirements.size;
     memory_allocate_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(m_device_, &memory_allocate_info, nullptr, &buffer_memory) != VK_SUCCESS) {
+    if (vkAllocateMemory(m_device_, &memory_allocate_info, nullptr, buffer_memory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate buffer memory!");
     }
 
-    vkBindBufferMemory(m_device_, buffer, buffer_memory, 0);
+    vkBindBufferMemory(m_device_, *buffer, *buffer_memory, 0);
 }
 
 }

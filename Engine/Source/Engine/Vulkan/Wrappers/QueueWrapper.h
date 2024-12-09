@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <limits>
 
-#include "MemoryArena/Arena.h"
+#include "Memory/Arena.h"
 
 namespace engine::vulkan {
 

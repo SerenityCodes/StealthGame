@@ -7,7 +7,7 @@ namespace allocators
     class StackAllocator {
         uint64_t* m_data_;
         size_t m_size_;
-        size_t m_stack_size_;
+        const size_t m_stack_size_;
     public:
         StackAllocator();
         explicit StackAllocator(size_t stack_size);

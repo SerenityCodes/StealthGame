@@ -4,7 +4,7 @@
 namespace allocators {
 
 class LinearAllocator {
-    uint8_t* m_start_;
+    uint64_t* m_start_;
     size_t m_size_;
 public:
     explicit LinearAllocator(void* start, size_t size);

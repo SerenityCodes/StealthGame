@@ -48,17 +48,17 @@ void* StackAllocator::allocate(size_t amount, size_t alignment) {
 }
 
 void StackAllocator::free_bytes(size_t bytes_to_free) {
-    m_stack_size_ -= bytes_to_free;   
+    m_size_ -= bytes_to_free;   
 }
 
 void StackAllocator::free_to_marker(uint64_t* ptr) {
     size_t byte_difference = reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(m_data_);
     m_data_ = ptr;
-    m_stack_size_ -= byte_difference;
+    m_size_ -= byte_difference;
 }
 
 void StackAllocator::clear() {
-    m_stack_size_ = 0;
+    m_size_ = 0;
 }
 
 uint64_t* StackAllocator::get_current_pos() const {

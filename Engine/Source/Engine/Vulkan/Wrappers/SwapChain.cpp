@@ -5,13 +5,13 @@
 
 namespace engine::vulkan {
 
-SwapChain::SwapChain(void* array_buffer,
+SwapChain::SwapChain(uint64_t* old_buffer,
     Arena& temp_arena,
     Arena& permanent_arena,
     GLFWwindow* window,
     VkSurfaceKHR surface,
     DeviceWrapper* device) :
-        m_full_buffer_start_(static_cast<uint32_t*>(array_buffer)),
+        m_full_buffer_start_(old_buffer),
         m_window_(window), m_device_(device), m_surface_(surface),
         m_swap_chain_(nullptr), m_render_pass_(nullptr) {
     create_swap_chain(temp_arena);
@@ -19,6 +19,7 @@ SwapChain::SwapChain(void* array_buffer,
     create_swap_chain_image_views();
     m_render_pass_ = create_render_pass();
     create_frame_buffers(m_render_pass_);
+    assert(m_image_count_ == m_frame_buffers_.size() && "Frame buffer count mismatch!");
 }
 
 SwapChain::~SwapChain() {
@@ -87,7 +88,7 @@ void SwapChain::create_swap_chain_images(Arena& permanent_arena) {
     vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, nullptr);
     if (m_full_buffer_start_ == nullptr) {
         size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * m_image_count_;
-        m_full_buffer_start_ = static_cast<uint32_t*>(permanent_arena.push(bytes_for_all_images));
+        m_full_buffer_start_ = static_cast<uint64_t*>(permanent_arena.push(bytes_for_all_images));
     }
     VkImage* arr_ptr = reinterpret_cast<VkImage*>(m_full_buffer_start_);
     m_images_ = ArrayRef(arr_ptr, m_image_count_);
@@ -211,8 +212,8 @@ VkRenderPass SwapChain::get_current_render_pass() const {
     return m_render_pass_;
 }
 
-uint32_t* SwapChain::get_starting_stack_pos() const {
-    return static_cast<uint32_t*>(m_full_buffer_start_);
+uint64_t* SwapChain::get_starting_stack_pos() const {
+    return m_full_buffer_start_;
 }
 
 SwapChain::operator VkSwapchainKHR() const {

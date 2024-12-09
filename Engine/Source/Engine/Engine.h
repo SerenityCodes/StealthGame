@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Containers/ArrayRef.h"
-#include "MemoryArena/Arena.h"
+#include "Memory/Arena.h"
 #include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
@@ -19,6 +19,10 @@ namespace engine {
 	    vulkan::VulkanModel m_model_;
 	public:
 	    StealthEngine();
+	    StealthEngine(const StealthEngine&) = delete;
+	    StealthEngine(StealthEngine&&) = delete;
+	    StealthEngine& operator=(const StealthEngine&) = delete;
+	    StealthEngine& operator=(StealthEngine&&) = delete;
 	    ~StealthEngine() = default;
 
 	    void run();

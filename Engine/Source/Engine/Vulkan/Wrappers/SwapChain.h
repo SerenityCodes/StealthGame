@@ -2,7 +2,7 @@
 #include "DeviceWrapper.h"
 #include "SurfaceWrapper.h"
 #include "Containers/ArrayRef.h"
-#include "MemoryArena/Arena.h"
+#include "Memory/Arena.h"
 
 namespace engine::vulkan {
 
@@ -14,7 +14,7 @@ public:
         ArrayRef<VkPresentModeKHR> present_modes;
     };
 private:
-    uint32_t* m_full_buffer_start_;
+    uint64_t* m_full_buffer_start_;
     GLFWwindow* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
@@ -28,7 +28,7 @@ private:
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
-    SwapChain(void* array_buffer, Arena& temp_arena, Arena& permanent_arena, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
+    SwapChain(uint64_t* old_buffer, Arena& temp_arena, Arena& permanent_arena, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
     ~SwapChain();
 
     void create_swap_chain(Arena& temp_arena);
@@ -45,7 +45,7 @@ public:
     VkRenderPass create_render_pass() const;
     VkRenderPass get_current_render_pass() const;
 
-    uint32_t* get_starting_stack_pos() const;
+    uint64_t* get_starting_stack_pos() const;
 
     operator VkSwapchainKHR() const;
     

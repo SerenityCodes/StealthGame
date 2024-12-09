@@ -4,7 +4,7 @@
 
 #include <array>
 
-#include "MemoryArena/Arena.h"
+#include "Memory/Arena.h"
 
 namespace engine::vulkan {
 

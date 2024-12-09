@@ -31,8 +31,7 @@ public:
     VkShaderModule get_vertex_shader() const;
     VkShaderModule get_fragment_shader() const;
 
-    void bind(VkCommandBuffer command_buffer);
-    void draw(VkCommandBuffer command_buffer);
+    void bind(VkCommandBuffer command_buffer) const;
     
     static VkShaderModule create_shader_module(VkDevice device, const ArrayRef<char>& code);
 };

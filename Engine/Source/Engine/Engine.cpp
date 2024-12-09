@@ -148,17 +148,19 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
 }
 
 void StealthEngine::run() {
+    m_temp_arena_.clear();
     const flecs::entity cube_entity = m_world_.entity();
     cube_entity.set<components::Transform3D>({{0.f, 0.f, 2.5f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}})
         .set<components::Renderable>({&m_model_});
     m_world_.add<Camera>();
     systems::setup_render_system(m_world_);
     bool should_continue = true;
+    components::Transform3D test_transform{{0.f, 0.f, 2.5f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}};
     while (!m_vulkan_wrapper_.window().should_close() && should_continue) {
         m_vulkan_wrapper_.window().glfw_poll_events();
-        if (auto cmd_buffer = m_renderer_.begin_frame(m_temp_arena_, m_permanent_arena_)) {
+        if (const auto cmd_buffer = m_renderer_.begin_frame(m_temp_arena_, m_permanent_arena_)) {
             m_renderer_.begin_render_pass(cmd_buffer);
-            m_pipeline_.bind(cmd_buffer);
+            m_renderer_.bind_pipeline(m_pipeline_.get_pipeline());
             m_world_.set<VulkanRenderInfo>({cmd_buffer, m_pipeline_.get_pipeline_layout()});
             should_continue = m_world_.progress();
             m_renderer_.end_render_pass(cmd_buffer);

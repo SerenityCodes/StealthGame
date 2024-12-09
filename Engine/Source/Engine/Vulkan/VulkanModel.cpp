@@ -24,7 +24,7 @@ get_attribute_descriptions() {
     VkVertexInputAttributeDescription color_attribute{};
     color_attribute.binding = 0;
     color_attribute.location = 1;
-    color_attribute.format = VK_FORMAT_R32G32_SFLOAT;
+    color_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
     color_attribute.offset = offsetof(Vertex, color);
     
     return {position_attribute, color_attribute};
@@ -37,8 +37,8 @@ VulkanModel::VulkanModel(DeviceWrapper* device_wrapper,
     VkDeviceSize vertex_buffer_size = sizeof(Vertex) * m_vertex_count_;
     m_device_wrapper_->create_buffer(vertex_buffer_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        m_vertex_buffer_,
-        m_vertex_buffer_memory_);
+        &m_vertex_buffer_,
+        &m_vertex_buffer_memory_);
     void* data;
     vkMapMemory(*m_device_wrapper_, m_vertex_buffer_memory_, 0, vertex_buffer_size, 0, &data);
     memcpy(data, vertices.data(), vertex_buffer_size);

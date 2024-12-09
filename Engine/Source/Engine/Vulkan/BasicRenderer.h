@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Containers/ObjectHolder.h"
-#include "MemoryArena/Arena.h"
+#include "Memory/Arena.h"
 #include "Wrappers/CommandBufferWrapper.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/SwapChain.h"
@@ -9,7 +9,6 @@
 namespace engine::vulkan {
 
 class BasicRenderer {
-    void* m_swap_chain_mem_buffer_;
     Window* m_window_;
     DeviceWrapper* m_device_;
     VkSurfaceKHR m_surface_;
@@ -37,7 +36,9 @@ public:
     [[nodiscard]] VkRenderPass get_render_pass() const;
 
     [[nodiscard]] VkExtent2D get_swap_chain_extent() const;
-    float get_aspect_ratio() const;
+    [[nodiscard]] float get_aspect_ratio() const;
+
+    void bind_pipeline(VkPipeline pipeline);
     
     ObjectHolder<SwapChain> initialize_swap_chain(Arena& temp_arena, Arena& permanent_arena);
     void recreate_swap_chain(Arena& temp_arena, Arena& permanent_arena);
