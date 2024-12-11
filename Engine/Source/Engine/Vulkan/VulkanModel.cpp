@@ -6,7 +6,7 @@ namespace engine::vulkan {
 
 VkVertexInputBindingDescription VulkanModel::Vertex::
 get_binding_descriptions() {
-    VkVertexInputBindingDescription binding_description{};
+    VkVertexInputBindingDescription binding_description;
     binding_description.binding = 0;
     binding_description.stride = sizeof(Vertex);
     binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -15,13 +15,13 @@ get_binding_descriptions() {
 
 std::array<VkVertexInputAttributeDescription, 2> VulkanModel::Vertex::
 get_attribute_descriptions() {
-    VkVertexInputAttributeDescription position_attribute{};
+    VkVertexInputAttributeDescription position_attribute;
     position_attribute.binding = 0;
     position_attribute.location = 0;
     position_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
     position_attribute.offset = offsetof(Vertex, position);
 
-    VkVertexInputAttributeDescription color_attribute{};
+    VkVertexInputAttributeDescription color_attribute;
     color_attribute.binding = 0;
     color_attribute.location = 1;
     color_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;

@@ -16,10 +16,10 @@ void Camera::set_orthographic_projection(float left, float right, float top, flo
 void Camera::set_perspective_projection(float fov_y, float aspect, float near,
     float far) {
     assert(glm::abs(aspect - glm::epsilon<float>()) > 0.0f);
-    const float tanHalfFovy = tan(fov_y / 2.f);
+    const float tan_half_fovy = tan(fov_y / 2.f);
     projection = glm::mat4{0.0f};
-    projection[0][0] = 1.f / (aspect * tanHalfFovy);
-    projection[1][1] = 1.f / (tanHalfFovy);
+    projection[0][0] = 1.f / (aspect * tan_half_fovy);
+    projection[1][1] = 1.f / (tan_half_fovy);
     projection[2][2] = far / (far - near);
     projection[2][3] = 1.f;
     projection[3][2] = -(far * near) / (far - near);
