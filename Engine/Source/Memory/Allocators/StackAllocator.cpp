@@ -1,17 +1,18 @@
 ﻿#include "StackAllocator.h"
 
 #include <cstdlib>
+#include <iostream>
 
 namespace allocators {
 
 static constexpr size_t DEFAULT_STACK_SIZE = 2 << 20;
 
-StackAllocator::StackAllocator() : m_data_(nullptr), m_size_(0), m_stack_size_(DEFAULT_STACK_SIZE) {
-    m_data_ = new uint64_t[m_stack_size_];
+StackAllocator::StackAllocator() : m_data_(new uint64_t[DEFAULT_STACK_SIZE]), m_size_(0), m_stack_size_(DEFAULT_STACK_SIZE) {
+    
 }
 
-StackAllocator::StackAllocator(size_t stack_size) : m_data_(nullptr), m_size_(0), m_stack_size_(stack_size) {
-    m_data_ = new uint64_t[stack_size];
+StackAllocator::StackAllocator(size_t stack_size) : m_data_(new uint64_t[stack_size]), m_size_(0), m_stack_size_(stack_size) {
+    
 }
 
 StackAllocator::~StackAllocator() {
@@ -23,7 +24,7 @@ void* StackAllocator::allocate(size_t amount) {
         return nullptr;
     }
     uint64_t* current_pos = m_data_ + m_size_;
-    if (current_pos + amount > current_pos + m_stack_size_) {
+    if (m_size_ + amount > m_stack_size_) {
         // Introduce a linked list type setup with stack allocators
         return nullptr;
     }
@@ -35,7 +36,7 @@ void* StackAllocator::allocate(size_t amount, size_t alignment) {
     if (amount == 0 || amount > m_stack_size_) {
         return nullptr;
     }
-    uintptr_t current_pos = reinterpret_cast<uintptr_t>(m_data_) + m_stack_size_;
+    uintptr_t current_pos = reinterpret_cast<uintptr_t>(m_data_) + m_size_;
     uintptr_t aligned_pos = (current_pos + (alignment - 1)) & ~(alignment - 1);
     size_t padding = aligned_pos - current_pos;
     size_t new_size = m_size_ + padding;
@@ -48,13 +49,18 @@ void* StackAllocator::allocate(size_t amount, size_t alignment) {
 }
 
 void StackAllocator::free_bytes(size_t bytes_to_free) {
-    m_size_ -= bytes_to_free;   
+    std::cout << "Freeing " << bytes_to_free << " bytes.\n";
+    if (bytes_to_free > m_size_) {
+        std::cerr << "Error: Attempting to free more bytes than allocated!\n";
+        m_size_ = 0;
+    } else {
+        m_size_ -= bytes_to_free;
+    }
 }
 
 void StackAllocator::free_to_marker(uint64_t* ptr) {
     size_t byte_difference = reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(m_data_);
-    m_data_ = ptr;
-    m_size_ -= byte_difference;
+    m_size_ = byte_difference;
 }
 
 void StackAllocator::clear() {
@@ -62,11 +68,11 @@ void StackAllocator::clear() {
 }
 
 uint64_t* StackAllocator::get_current_pos() const {
-    return m_data_ + m_stack_size_;
+    return m_data_ + m_size_;
 }
 
 size_t StackAllocator::get_stack_size() const {
-    return m_stack_size_;
+    return m_size_;
 }
 
 bool StackAllocator::operator==(const StackAllocator& other) const {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Containers/ArrayRef.h"
+#include "ECS/World.h"
 #include "Memory/Arena.h"
 #include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
@@ -14,6 +15,7 @@ namespace engine {
 	    vulkan::BasicRenderer m_renderer_;
 	    vulkan::PipelineWrapper m_pipeline_;
 	    vulkan::VulkanModel m_model_;
+	    ecs::World m_world_;
 	public:
 	    StealthEngine();
 	    StealthEngine(const StealthEngine&) = delete;

@@ -1,27 +1,31 @@
 ﻿#pragma once
-#include <cstdint>
-
-#include "Containers/DynStackArray.h"
+#include "Memory/Arena.h"
 
 namespace engine::allocators {
 
 class PoolAllocator {
-    uint8_t* m_starting_pool_;
-    size_t m_chunks_;
-    size_t m_chunk_size_;
-    containers::DynStackArray<size_t> m_free_list_;
 public:
-    PoolAllocator(size_t chunks, size_t chunk_size);
+    // Linked List structure
+    struct Chunk {
+        Chunk* next;
+    };
+private:
+    Arena* m_allocation_arena_;
+    Chunk* m_allocation_ptr_;
+    size_t m_chunks_per_block_;
+    size_t m_chunk_size_;
+    
+    Chunk* allocate_block() const;
+public:
+    PoolAllocator(Arena* allocation_arena, size_t chunks_per_block, size_t chunk_size);
     PoolAllocator(const PoolAllocator&) = delete;
     PoolAllocator(PoolAllocator&&) = delete;
     PoolAllocator& operator=(const PoolAllocator&) = delete;
     PoolAllocator& operator=(PoolAllocator&&) = delete;
-    ~PoolAllocator();
+    ~PoolAllocator() = default;
 
     void* allocate();
-    void deallocate(const void* ptr);
-
-    [[nodiscard]] size_t available_chunks() const;
+    void deallocate(void* ptr);
 };
 
 }

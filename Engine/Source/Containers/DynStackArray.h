@@ -1,5 +1,8 @@
 ﻿#pragma once
+
 #include <cstdint>
+
+#include "Memory/Arena.h"
 
 namespace engine::containers {
 
@@ -9,7 +12,7 @@ class DynStackArray {
     size_t m_size_;
     size_t m_capacity_;
 public:
-    explicit DynStackArray(size_t size);
+    DynStackArray(size_t size, Arena& arena);
     DynStackArray(const DynStackArray& other) = delete;
     DynStackArray& operator=(const DynStackArray& other) = delete;
     DynStackArray(DynStackArray&& other) noexcept;
@@ -19,11 +22,13 @@ public:
     bool push(const T& element);
     T pop();
     bool empty() const;
+
+    size_t size() const;
 };
 
 template <typename T>
-DynStackArray<T>::DynStackArray(size_t size) {
-    m_data_ptr_ = new T[size];
+DynStackArray<T>::DynStackArray(size_t size, Arena& arena) {
+    m_data_ptr_ = static_cast<T*>(arena.push(sizeof(T) * size));
     m_size_ = 0;
     m_capacity_ = size;
 }
@@ -38,7 +43,6 @@ DynStackArray<T>::DynStackArray(DynStackArray&& other) noexcept {
 template <typename T>
 DynStackArray<T>& DynStackArray<T>::operator=(DynStackArray&& other) noexcept {
     if (this != &other) {
-        delete[] m_data_ptr_;
         m_data_ptr_ = other.m_data_ptr_;
         m_size_ = other.m_size_;
         m_capacity_ = other.m_capacity_;
@@ -48,7 +52,7 @@ DynStackArray<T>& DynStackArray<T>::operator=(DynStackArray&& other) noexcept {
 
 template <typename T>
 DynStackArray<T>::~DynStackArray() {
-    delete[] m_data_ptr_;
+    
 }
 
 template <typename T>
@@ -71,6 +75,11 @@ T DynStackArray<T>::pop() {
 template <typename T>
 bool DynStackArray<T>::empty() const {
     return m_size_ == 0;
+}
+
+template <typename T>
+size_t DynStackArray<T>::size() const {
+    return m_size_;
 }
 
 

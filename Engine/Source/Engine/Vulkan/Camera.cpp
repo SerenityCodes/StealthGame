@@ -2,6 +2,10 @@
 
 #include <glm/ext/matrix_clip_space.hpp>
 
+Camera::Camera(float fov_y, float aspect, float near, float far) {
+    set_perspective_projection(fov_y, aspect, near, far);
+}
+
 void Camera::set_orthographic_projection(float left, float right, float top, float bottom,
                                          float near, float far) {
     projection = glm::mat4{1.};

@@ -1,13 +1,15 @@
 ﻿#pragma once
 
 #include <algorithm>
-#include <functional>
 #include <initializer_list>
 #include <iterator>
+#include "Memory/Arena.h"
 
 template <typename T>
 class DynArray {
+   Arena* m_alloc_; 
     size_t m_size_;
+    size_t m_capacity_;
     T* m_data_ptr_;
 public:
     class iterator {
@@ -110,11 +112,11 @@ public:
         }
     };
 
-    DynArray();
-    explicit DynArray(size_t size);
-    DynArray(std::initializer_list<T> init);
+    explicit DynArray(Arena& arena);
+    DynArray(Arena& arena, size_t size);
+    DynArray(std::initializer_list<T> init, Arena& arena);
     template <typename It>
-    DynArray(It begin, It end);
+    DynArray(Arena& arena, It begin, It end);
     DynArray(const DynArray& other) noexcept;
     DynArray& operator=(const DynArray& other) noexcept;
     DynArray(DynArray&& other) noexcept;
@@ -129,6 +131,7 @@ public:
 
     T& operator[](size_t index) const;
     T& operator[](size_t index);
+    void push_back(const T& value);
 
     iterator begin();
     const_iterator begin() const;
@@ -140,45 +143,56 @@ public:
 };
 
 template<typename T>
-DynArray<T>::DynArray() {
+DynArray<T>::DynArray(Arena& arena) {
+    m_alloc_ = &arena;
     m_size_ = 0;
+    m_capacity_ = 0;
     m_data_ptr_ = nullptr;
 }
 
 template<typename T>
-DynArray<T>::DynArray(size_t size) {
+DynArray<T>::DynArray(Arena& arena, size_t size) {
+    m_alloc_ = &arena;
     m_size_ = size;
-    m_data_ptr_ = new T[m_size_];
+    m_capacity_ = size;
+    m_data_ptr_ = static_cast<T*>(arena.push(m_size_ * sizeof(T)));
 }
 
 template <typename T>
-DynArray<T>::DynArray(std::initializer_list<T> init) {
+DynArray<T>::DynArray(std::initializer_list<T> init, Arena& arena) {
+    m_alloc_ = &arena;
     m_size_ = init.size();
-    m_data_ptr_ = new T[init.size()];
+    m_capacity_ = init.size();
+    m_data_ptr_ = static_cast<T*>(arena.push(m_size_ * sizeof(T)));
     std::copy(init.begin(), init.end(), m_data_ptr_);
 }
 
 template <typename T>
 template <typename It>
-DynArray<T>::DynArray(It begin, It end) {
+DynArray<T>::DynArray(Arena& arena, It begin, It end) {
+    m_alloc_ = &arena;
     m_size_ = std::distance(begin, end);
-    m_data_ptr_ = new T[m_size_];
+    m_capacity_ = m_size_;
+    m_data_ptr_ = static_cast<T*>(arena.push(m_size_ * sizeof(T)));
     std::copy(begin, end, m_data_ptr_);
 }
 
 template<typename T>
 DynArray<T>::DynArray(const DynArray &other) noexcept {
+    m_alloc_ = &other.m_alloc_;
     m_size_ = other.m_size_;
-    m_data_ptr_ = new T[other.m_size_];
+    m_capacity_ = other.m_capacity_;
+    m_data_ptr_ = static_cast<T*>(other.m_alloc_->push(sizeof(T) * other.m_size_));
     std::copy(other.begin(), other.end(), m_data_ptr_);
 }
 
 template<typename T>
 DynArray<T>& DynArray<T>::operator=(const DynArray& other) noexcept {
     if (this != &other) {
-        delete[] m_data_ptr_;
+        m_alloc_ = &other.m_alloc_;
         m_size_ = other.m_size_;
-        m_data_ptr_ = new T[m_size_];
+        m_capacity_ = other.m_capacity_;
+        m_data_ptr_ = static_cast<T*>(m_alloc_->push(m_size_ * sizeof(T)));
         std::copy(other.begin(), other.end(), m_data_ptr_);
         return *this;
     }
@@ -187,7 +201,9 @@ DynArray<T>& DynArray<T>::operator=(const DynArray& other) noexcept {
 
 template<typename T>
 DynArray<T>::DynArray(DynArray&& other) noexcept {
+    m_alloc_ = &other.m_alloc_;
     m_size_ = other.m_size_;
+    m_capacity_ = other.m_capacity_;
     this->m_data_ptr_ = other.m_data_ptr_;
     other.m_data_ptr_ = nullptr;
 }
@@ -195,7 +211,6 @@ DynArray<T>::DynArray(DynArray&& other) noexcept {
 template <typename T>
 DynArray<T>& DynArray<T>::operator=(DynArray&& other) noexcept {
     if (this != &other) {
-        delete[] m_data_ptr_;
         this->m_size_ = other.m_size_;
         this->m_data_ptr_ = other.m_data_ptr_;
         other.m_data_ptr_ = nullptr;
@@ -205,7 +220,7 @@ DynArray<T>& DynArray<T>::operator=(DynArray&& other) noexcept {
 
 template<typename T>
 DynArray<T>::~DynArray() {
-    delete[] m_data_ptr_;
+    
 }
 
 template<typename T>
@@ -215,12 +230,12 @@ bool DynArray<T>::is_empty() const {
 
 template<typename T>
 void DynArray<T>::resize(const size_t size) {
-    T* new_data = new T[size];
-    const T* old_data = m_data_ptr_;
+    T* new_data = static_cast<T*>(m_alloc_->push(size * sizeof(T)));
     std::copy(begin(), end(), new_data);
     m_data_ptr_ = new_data;
     this->m_size_ = size;
-    delete[] old_data;
+    this->m_capacity_ = size;
+    // Pop old data off. However, using stack allocator here
 }
 
 template<typename T>
@@ -235,7 +250,6 @@ T* DynArray<T>::data() const {
 
 template <typename T>
 void DynArray<T>::clear() {
-    delete[] m_data_ptr_;
     m_data_ptr_ = nullptr;
     m_size_ = 0;
 }
@@ -248,6 +262,14 @@ T& DynArray<T>::operator[](size_t index) const {
 template<typename T>
 T& DynArray<T>::operator[](size_t index) {
     return m_data_ptr_[index];
+}
+
+template <typename T>
+void DynArray<T>::push_back(const T& value) {
+    if (m_size_ + 1 > m_capacity_) {
+        resize(m_capacity_ * 2);
+    }
+    m_data_ptr_[m_size_++] = value;
 }
 
 template<typename T>

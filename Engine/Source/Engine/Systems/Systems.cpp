@@ -1,13 +1,5 @@
 ﻿#include "Systems.h"
 
-#include <iostream>
-
-#include "Engine/Engine.h"
-#include "Engine/Components/Renderable.h"
-#include "Engine/Components/Transform3D.h"
-#include "Engine/Vulkan/VulkanRenderInfo.h"
-#include "Engine/Vulkan/Camera.h"
-
 namespace systems {
 
 void render_system(const VulkanRenderInfo& render_info, components::Transform3D& transform, const components::Renderable& renderable, float delta_time, const Camera& camera) {

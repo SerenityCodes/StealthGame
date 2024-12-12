@@ -4,9 +4,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "Components/Renderable.h"
-#include "Components/Transform3D.h"
-#include "Containers/DynArray.h"
 #include "Systems/Systems.h"
 #include "Vulkan/Camera.h"
 #include "Vulkan/VulkanRenderInfo.h"
@@ -93,18 +90,19 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
     m_renderer_(m_temp_arena_, m_permanent_arena_,
         &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
     m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device()),
-    m_model_(make_cube(m_vulkan_wrapper_.device(), m_permanent_arena_)) {
+    m_model_(make_cube(m_vulkan_wrapper_.device(), m_permanent_arena_)),
+    m_world_(m_temp_arena_)
+    {
     
 }
 
 void StealthEngine::run() {
     m_temp_arena_.clear();
     bool should_continue = true;
-    components::Transform3D test_transform{{0.f, 0.f, 2.5f}, {0.f, 0.f, 0.f}, {.5f, .5f, .5f}};
-    components::Renderable test_renderable{.model = &m_model_};
-    Camera camera;
-    camera.set_perspective_projection(glm::radians(45.0f), m_renderer_.get_aspect_ratio(), 0.1f, 10.f);
+    Camera camera{glm::radians(45.0f), m_renderer_.get_aspect_ratio(), 0.1f, 10.f};
     auto start = std::chrono::high_resolution_clock::now();
+    components::Transform3D test_transform{{0.f, 0.f, 2.5f}, {0.f, 0.f, 0.f}, {.5f, .5f, .5f}};
+    components::Renderable renderable{.model = &m_model_};
     while (!m_vulkan_wrapper_.window().should_close() && should_continue) {
         m_vulkan_wrapper_.window().glfw_poll_events();
         auto new_time = std::chrono::high_resolution_clock::now();
@@ -114,7 +112,7 @@ void StealthEngine::run() {
             m_renderer_.begin_render_pass(cmd_buffer);
             m_renderer_.bind_pipeline(m_pipeline_.get_pipeline());
             VulkanRenderInfo render_info{.cmd_buffer = cmd_buffer, .pipeline_layout = m_pipeline_.get_pipeline_layout()};
-            systems::render_system(render_info, test_transform, test_renderable, delta_time, camera);
+            systems::render_system(render_info, test_transform, renderable, delta_time, camera);
             m_renderer_.end_render_pass(cmd_buffer);
             m_renderer_.end_frame(m_temp_arena_, m_permanent_arena_);
         }
