@@ -9,6 +9,10 @@ BasicRenderer::BasicRenderer(Arena& temp_arena, Arena& permanent_arena, Window* 
     m_surface_(surface), m_swap_chain_(initialize_swap_chain(temp_arena, permanent_arena)), m_command_buffer_(device, m_swap_chain_.get()) {
 }
 
+VkCommandPool BasicRenderer::get_command_pool() const {
+    return m_command_buffer_.get_command_pool();
+}
+
 VkCommandBuffer BasicRenderer::begin_frame(Arena& temp_arena, Arena& permanent_arena) {
     assert(!m_is_frame_in_progress_ && "Cannot call begin_frame while another is in progress");
     m_command_buffer_.wait_for_fence(m_current_frame_);

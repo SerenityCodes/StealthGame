@@ -26,6 +26,7 @@ public:
     BasicRenderer& operator=(BasicRenderer&&) = delete;
     ~BasicRenderer() = default;
 
+    VkCommandPool get_command_pool() const;
     VkCommandBuffer begin_frame(Arena& temp_arena, Arena& permanent_arena);
     void end_frame(Arena& temp_arena, Arena& permanent_arena);
     void begin_render_pass(VkCommandBuffer command_buffer);

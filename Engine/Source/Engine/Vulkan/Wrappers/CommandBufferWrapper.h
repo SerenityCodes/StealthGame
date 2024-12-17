@@ -21,7 +21,7 @@ public:
     CommandBufferWrapper() = default;
     CommandBufferWrapper(DeviceWrapper* device, SwapChain* swap_chain);
     ~CommandBufferWrapper();
-
+    
     void wait_for_fence(uint32_t current_frame) const;
     void reset_fence(uint32_t current_frame) const;
     void reset_command_buffer(uint32_t current_frame) const;
@@ -30,6 +30,7 @@ public:
     [[nodiscard]] bool present_command_buffer(uint32_t current_frame, uint32_t image_index) const;
 
     VkCommandBuffer get_command_buffer(uint32_t current_frame) const;
+    VkCommandPool get_command_pool() const;
 
     void reset_swap_chain_ptr(SwapChain* swap_chain);
     

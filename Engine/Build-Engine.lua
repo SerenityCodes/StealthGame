@@ -5,11 +5,11 @@ project "Engine"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Vendor/flecs/**.hpp", "Vendor/flecs/**.c" }
+   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Shaders/**.vert", "Shaders/**.frag" }
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
-   
-   defines 
+
+   defines
    {
         "GLFW_INCLUDE_VULKAN",
         "GLM_FORCE_RADIANS",
@@ -49,3 +49,12 @@ project "Engine"
        runtime "Release"
        optimize "On"
        symbols "Off"
+
+   filter { "files:**.vert" }
+      flags "ExcludeFromBuild"
+      shadermodel "5.0"
+   filter { "files:**.frag" }
+      removeflags "ExcludeFromBuild"
+      shadertype "Fragment"
+      shaderentry "ForFragment"
+    filter {}

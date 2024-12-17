@@ -114,6 +114,10 @@ VkCommandBuffer CommandBufferWrapper::get_command_buffer(
     return m_primary_command_buffers_[current_frame];
 }
 
+VkCommandPool CommandBufferWrapper::get_command_pool() const {
+    return m_command_pool_;
+}
+
 void CommandBufferWrapper::reset_swap_chain_ptr(SwapChain* swap_chain) {
     m_swap_chain_ = swap_chain;
 }

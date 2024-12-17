@@ -9,6 +9,7 @@ workspace "Stealth Game"
       buildoptions { "/EHsc", "/Zc:preprocessor", "/Zc:__cplusplus" }
 
 outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
+shaderdir = outputdir .. "/shaders"
 
 group "Dependencies"
     include "Engine/Vendor/glfw"

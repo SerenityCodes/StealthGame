@@ -142,6 +142,46 @@ QueueWrapper::QueueFamily DeviceWrapper::get_graphics_queue_family() const {
     return m_graphics_queue_family_;
 }
 
+VkCommandBuffer DeviceWrapper::get_one_time_command_buffer(VkCommandPool command_pool) const {
+    VkCommandBufferAllocateInfo allocate_info{};
+    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocate_info.commandBufferCount = 1;
+    allocate_info.commandPool = command_pool;
+    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(m_device_, &allocate_info, &command_buffer);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command_buffer, &begin_info);
+    return command_buffer;
+}
+
+void DeviceWrapper::end_one_time_command_buffer(VkCommandPool command_pool, VkCommandBuffer cmd_buffer) const {
+    vkEndCommandBuffer(cmd_buffer);
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buffer;
+    vkQueueSubmit(m_graphics_queue_, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_graphics_queue_);
+    vkFreeCommandBuffers(m_device_, command_pool, 1, &cmd_buffer);
+}
+
+void DeviceWrapper::copy_buffer(VkCommandPool command_pool, VkBuffer source_buffer, VkBuffer dest_buffer,
+    VkDeviceSize size) const {
+    VkCommandBuffer cmd_buffer = get_one_time_command_buffer(command_pool);
+
+    VkBufferCopy copy_region;
+    copy_region.srcOffset = 0;
+    copy_region.dstOffset = 0;
+    copy_region.size = size;
+    vkCmdCopyBuffer(cmd_buffer, source_buffer, dest_buffer, 1, &copy_region);
+    end_one_time_command_buffer(command_pool, cmd_buffer);
+}
+
 uint32_t DeviceWrapper::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const {
     VkPhysicalDeviceMemoryProperties memory_properties;
     vkGetPhysicalDeviceMemoryProperties(m_physical_device_, &memory_properties);
