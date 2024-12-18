@@ -5,7 +5,11 @@ project "Engine"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp", "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp", "Shaders/**.vert", "Shaders/**.frag" }
+   files { "Source/**.h", "Source/**.cpp",
+   "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp",
+   "Vendor/tiny_obj_loader/tiny_obj_loader.h",
+   "Vendor/flecs/**.h", "Vendor/flecs/**.cpp",
+   "Shaders/**.vert", "Shaders/**.frag" }
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
 
@@ -13,7 +17,8 @@ project "Engine"
    {
         "GLFW_INCLUDE_VULKAN",
         "GLM_FORCE_RADIANS",
-        "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+        "GLM_FORCE_DEPTH_ZERO_TO_ONE",
+        "TINYOBJLOADER_IMPLEMENTATION"
    }
 
    links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW" }
