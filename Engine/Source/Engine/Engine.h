@@ -28,6 +28,7 @@ namespace engine {
 	    void run();
 	    flecs::world& get_world();
 	    vulkan::VulkanModel create_model(const vulkan::VulkanModel::VertexIndexInfo& index_info);
+	    vulkan::VulkanModel load_model(const char* file_name);
 	    float get_aspect_ratio() const;
 
 	    static ArrayRef<char> read_temporary_file(Arena& temp_arena, const char* file_name);

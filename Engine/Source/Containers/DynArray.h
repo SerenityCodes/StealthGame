@@ -125,7 +125,7 @@ public:
 
     [[nodiscard]] bool is_empty() const;
     void resize(size_t size);
-    [[nodiscard]] size_t get_size() const;
+    [[nodiscard]] size_t size() const;
     T* data() const;
     void clear();
 
@@ -229,17 +229,16 @@ bool DynArray<T>::is_empty() const {
 }
 
 template<typename T>
-void DynArray<T>::resize(const size_t size) {
-    T* new_data = static_cast<T*>(m_alloc_->push(size * sizeof(T)));
+void DynArray<T>::resize(const size_t new_capacity) {
+    T* new_data = static_cast<T*>(m_alloc_->push(new_capacity * sizeof(T)));
     std::copy(begin(), end(), new_data);
     m_data_ptr_ = new_data;
-    this->m_size_ = size;
-    this->m_capacity_ = size;
+    this->m_capacity_ = new_capacity;
     // Pop old data off. However, using stack allocator here
 }
 
 template<typename T>
-size_t DynArray<T>::get_size() const {
+size_t DynArray<T>::size() const {
     return m_size_;
 }
 
@@ -266,7 +265,12 @@ T& DynArray<T>::operator[](size_t index) {
 
 template <typename T>
 void DynArray<T>::push_back(const T& value) {
-    if (m_size_ + 1 > m_capacity_) {
+    if (m_capacity_ == 0) {
+        constexpr int default_capacity = 32;
+        m_data_ptr_ = static_cast<T*>(m_alloc_->push(sizeof(T) * default_capacity));
+        m_capacity_ = default_capacity;
+        m_size_ = 0;
+    } else if (m_size_ + 1 > m_capacity_) {
         resize(m_capacity_ * 2);
     }
     m_data_ptr_[m_size_++] = value;

@@ -29,7 +29,7 @@ void operator delete[](void* p) noexcept {
 
 namespace engine {
 
-constexpr int default_stack_size = 2 << 20;
+constexpr int default_stack_size = 2 << 25;
 
 StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
      m_permanent_arena_(default_stack_size),
@@ -69,6 +69,10 @@ flecs::world& StealthEngine::get_world() {
 vulkan::VulkanModel StealthEngine::create_model(
     const vulkan::VulkanModel::VertexIndexInfo& index_info) {
     return {m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), index_info};
+}
+
+vulkan::VulkanModel StealthEngine::load_model(const char* file_name) {
+    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), file_name);
 }
 
 float StealthEngine::get_aspect_ratio() const {

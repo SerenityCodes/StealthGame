@@ -1,6 +1,14 @@
 ﻿#include "VulkanModel.h"
 
 #include <array>
+#include <fstream>
+#include <iostream>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <unordered_map>
+
+#include "../Vendor/tiny_obj_loader/tiny_obj_loader.h"
+#include "Memory/STLArenaAllocator.h"
 
 namespace engine::vulkan {
 
@@ -28,6 +36,71 @@ get_attribute_descriptions() {
     color_attribute.offset = offsetof(Vertex, color);
     
     return {position_attribute, color_attribute};
+}
+
+VulkanModel::VertexIndexInfo::VertexIndexInfo(Arena& model_arena)
+: vertices(model_arena), indices(model_arena) {
+    
+}
+
+void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* file_path) {
+    vertices.clear();
+    indices.clear();
+    
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string err;
+    std::string warn;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, file_path)) {
+        std::cerr << err.c_str() << std::endl;
+        return;
+    }
+    using ArenaAllocator = STLArenaAllocator<std::pair<const Vertex, uint32_t>>;
+    std::unordered_map<Vertex, uint32_t, std::hash<Vertex>, std::equal_to<>, ArenaAllocator> index_map{ArenaAllocator{&temp_arena}};
+    for (const auto& shape : shapes) {
+        for (const auto& index : shape.mesh.indices) {
+            Vertex vertex;
+            if (index.vertex_index >= 0) {
+                vertex.position = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]};
+
+                size_t color_index = 3 * index.vertex_index + 2;
+                if (color_index < attrib.colors.size()) {
+                    vertex.color = {
+                    attrib.colors[color_index - 2],
+                    attrib.colors[color_index - 1],
+                    attrib.colors[color_index - 0]
+                    };
+                }
+                else {
+                    vertex.color = {0, 0, 0};
+                }
+            }
+            if (index.normal_index >= 0) {
+                vertex.normal = {
+                attrib.normals[3 * index.normal_index + 0],
+                attrib.normals[3 * index.normal_index + 1],
+                attrib.normals[3 * index.normal_index + 2]
+                };
+            }
+            if (index.texcoord_index >= 0) {
+                vertex.uv = {
+                attrib.texcoords[2 * index.texcoord_index + 0],
+                attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+            }
+            if (index_map.count(vertex) == 0) {
+                index_map[vertex] = static_cast<uint32_t>(vertices.size());
+                vertices.push_back(vertex);
+            }
+            indices.push_back(index_map[vertex]);
+        }
+    }
+    temp_arena.clear();
 }
 
 void VulkanModel::create_buffer_from_staging(DeviceWrapper* device_wrapper, VkCommandPool command_pool, VkDeviceSize size, VkBufferUsageFlags usage, void* data_to_copy, VkBuffer& buffer, VkDeviceMemory& buffer_memory) {
@@ -77,6 +150,13 @@ VulkanModel::~VulkanModel() {
         vkDestroyBuffer(*m_device_wrapper_, m_index_buffer_, nullptr);
         vkFreeMemory(*m_device_wrapper_, m_index_buffer_memory_, nullptr);
     }
+}
+
+VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path) {
+    std::ifstream file(file_path, std::ios::binary);
+    VertexIndexInfo vertex_index_info{model_arena};
+    vertex_index_info.load_model(temp_arena, file_path);
+    return {device_wrapper, command_pool, vertex_index_info};
 }
 
 void VulkanModel::bind(VkCommandBuffer command_buffer) const {
