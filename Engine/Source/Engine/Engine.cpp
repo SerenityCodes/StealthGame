@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "Systems/Systems.h"
+#include "Systems/CoreEngineSystems.h"
 #include "Vulkan/Camera.h"
 #include "Vulkan/VulkanRenderInfo.h"
 
@@ -31,84 +31,48 @@ namespace engine {
 
 constexpr int default_stack_size = 2 << 20;
 
-vulkan::VulkanModel make_cube(vulkan::DeviceWrapper* device, VkCommandPool command_pool, Arena& arena) {
-    vulkan::VulkanModel::VertexIndexInfo index_info{};
-    index_info.vertices = {{
-        // left face (white)
-        {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-        {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-        {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
-        {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
- 
-        // right face (yellow)
-        {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-        {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-        {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
-        {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
- 
-        // top face (orange, remember y axis points down)
-        {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-        {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-        {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-        {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
- 
-        // bottom face (red)
-        {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-        {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-        {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
-        {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
- 
-        // nose face (blue)
-        {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
-        {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-        {{-.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-        {{.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
- 
-        // tail face (green)
-        {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-        {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-        {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-        {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-    }, arena};
-    index_info.indices = {{0,  1,  2,  0,  3,  1,  4,  5,  6,  4,  7,  5,  8,  9,  10, 8,  11, 9,
-                            12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 21}, arena};
-    return {device, command_pool, index_info};
-}
-
 StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
      m_permanent_arena_(default_stack_size),
     m_vulkan_wrapper_(m_temp_arena_),
     m_renderer_(m_temp_arena_, m_permanent_arena_,
         &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
-    m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device()),
-    m_model_(make_cube(m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), m_permanent_arena_)),
-    m_world_(m_temp_arena_)
+    m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device())
     {
     
 }
 
 void StealthEngine::run() {
-    m_temp_arena_.clear();
-    Camera camera{glm::radians(45.0f), m_renderer_.get_aspect_ratio(), 0.1f, 10.f};
-    auto start = std::chrono::high_resolution_clock::now();
-    components::Transform3D test_transform{{0.f, 0.f, 2.5f}, {0.f, 0.f, 0.f}, {.5f, .5f, .5f}};
-    components::Renderable renderable{.model = &m_model_};
+    m_world_.add<VulkanRenderInfo>();
+    systems::setup_render_system(m_world_);
     bool should_continue = true;
     while (!m_vulkan_wrapper_.window().should_close() && should_continue) {
         m_vulkan_wrapper_.window().glfw_poll_events();
-        auto new_time = std::chrono::high_resolution_clock::now();
-        float delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(new_time - start).count();
-        start = new_time;
+        m_temp_arena_.clear();
         if (const auto cmd_buffer = m_renderer_.begin_frame(m_temp_arena_, m_permanent_arena_)) {
             m_renderer_.begin_render_pass(cmd_buffer);
             m_renderer_.bind_pipeline(m_pipeline_.get_pipeline());
-            VulkanRenderInfo render_info{.cmd_buffer = cmd_buffer, .pipeline_layout = m_pipeline_.get_pipeline_layout()};
-            systems::render_system(render_info, test_transform, renderable, delta_time, camera);
+            VulkanRenderInfo* render_info = m_world_.get_mut<VulkanRenderInfo>();
+            render_info->cmd_buffer = cmd_buffer;
+            render_info->pipeline_layout = m_pipeline_.get_pipeline_layout();
+            should_continue = m_world_.progress();
             m_renderer_.end_render_pass(cmd_buffer);
             m_renderer_.end_frame(m_temp_arena_, m_permanent_arena_);
         }
     }
     // Join Threads Here
+}
+
+flecs::world& StealthEngine::get_world() {
+    return m_world_;
+}
+
+vulkan::VulkanModel StealthEngine::create_model(
+    const vulkan::VulkanModel::VertexIndexInfo& index_info) {
+    return {m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), index_info};
+}
+
+float StealthEngine::get_aspect_ratio() const {
+    return m_renderer_.get_aspect_ratio();
 }
 
 ArrayRef<char> StealthEngine::read_temporary_file(Arena& temp_arena, const char* file_name) {

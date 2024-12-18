@@ -6,6 +6,8 @@
 #include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
+#include "../Vendor/flecs/flecs.h"
+#include "Vulkan/VulkanRenderInfo.h"
 
 namespace engine {
 	class StealthEngine {
@@ -14,8 +16,7 @@ namespace engine {
 	    vulkan::VulkanWrapper m_vulkan_wrapper_;
 	    vulkan::BasicRenderer m_renderer_;
 	    vulkan::PipelineWrapper m_pipeline_;
-	    vulkan::VulkanModel m_model_;
-	    ecs::World m_world_;
+	    flecs::world m_world_;
 	public:
 	    StealthEngine();
 	    StealthEngine(const StealthEngine&) = delete;
@@ -25,6 +26,9 @@ namespace engine {
 	    ~StealthEngine() = default;
 
 	    void run();
+	    flecs::world& get_world();
+	    vulkan::VulkanModel create_model(const vulkan::VulkanModel::VertexIndexInfo& index_info);
+	    float get_aspect_ratio() const;
 
 	    static ArrayRef<char> read_temporary_file(Arena& temp_arena, const char* file_name);
 	};
