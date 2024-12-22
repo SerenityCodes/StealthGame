@@ -1,13 +1,11 @@
 #include <random>
 
+#include "PlayerMovementSystems.h"
 #include "Engine/Engine.h"
+#include "Engine/Components/Components.h"
 #include "Engine/Systems/CoreEngineSystems.h"
 #include "Engine/Vulkan/Camera.h"
-
-struct Velocity {
-    glm::vec3 direction;
-    float speed;
-};
+#include "assimp/postprocess.h"
 
 glm::vec3 get_random_direction() {
     static std::mt19937_64 gen{std::random_device{}()};
@@ -63,15 +61,29 @@ void initialize_world(const flecs::world& world, ArrayRef<engine::vulkan::Vulkan
         cube.set<Velocity>({.direction = get_random_direction(), .speed = .5f});
     }
     spawn_and_move_cube(world);
+    const flecs::entity viewer_entity = world.entity();
+    viewer_entity
+        .set<components::Transform3D>({glm::vec3{0.f}, glm::vec3{0.f}, glm::vec3{1.f}})
+        .add<KeyboardMovement>()
+        .set<Velocity>({.direction = glm::vec3{0.f}, .speed = 0.f});
 }
 
 int main() {
     Arena cube_arena{2 << 20};
 	engine::StealthEngine engine;
     flecs::world& world = engine.get_world();
-    engine::vulkan::VulkanModel vase_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/smooth_vase.obj");
-    engine::vulkan::VulkanModel cube_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/flat_vase.obj");
+    // For more info on import flags, go here
+    // https://github.com/assimp/assimp/blob/master/include/assimp/postprocess.h
+    uint32_t import_flags = aiProcess_Triangulate
+    | aiProcess_OptimizeGraph
+    | aiProcess_OptimizeMeshes
+    | aiProcess_MakeLeftHanded
+    | aiProcess_JoinIdenticalVertices;
+    engine::vulkan::VulkanModel vase_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/smooth_vase.obj", import_flags);
+    engine::vulkan::VulkanModel cube_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/flat_vase.obj", import_flags);
     engine::vulkan::VulkanModel* models[2] = {&vase_model, &cube_model};
     initialize_world(world, ArrayRef{models, 2}, engine.get_aspect_ratio());
+    setup_input_keyboard_system(world);
+    setup_keyboard_movement(world);
     engine.run();
 }

@@ -1,3 +1,6 @@
 [submodule "Engine/Vendor/glm"]
 	path = Engine/Vendor/glm
 	url = git@github.com:icaven/glm.git
+[submodule "Engine/Vendor/assimp"]
+	path = Engine/Vendor/assimp
+	url = https://github.com/AminAliari/assimp.git

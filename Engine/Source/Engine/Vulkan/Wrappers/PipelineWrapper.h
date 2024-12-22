@@ -15,6 +15,7 @@ class PipelineWrapper {
 public:
     struct SimplePushConstantData {
         glm::mat4 transform;
+        glm::mat4 normal;
     };
 private:
     DeviceWrapper* m_device_;

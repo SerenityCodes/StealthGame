@@ -1,5 +1,9 @@
 ﻿#include "CoreEngineSystems.h"
 
+#include "Engine/Vulkan/Wrappers/PipelineWrapper.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/string_cast.hpp"
+
 namespace systems {
 
 void setup_render_system(const flecs::world& world) {
@@ -9,8 +13,9 @@ void setup_render_system(const flecs::world& world) {
             const flecs::world ecs_world = entity.world();
             const auto& [cmd_buffer, pipeline_layout] = *ecs_world.get<VulkanRenderInfo>();
             const Camera* camera = ecs_world.get<Camera>();
-            const PushConstantStruct push_constant{.transform = camera->get_projection() * transform.as_matrix()};
-            vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantStruct), &push_constant);
+            glm::mat4 projection_view = camera->get_projection();
+            const engine::vulkan::PipelineWrapper::SimplePushConstantData push_constant{.transform = projection_view * transform.as_matrix(), .normal = transform.normal_matrix()};
+            vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(engine::vulkan::PipelineWrapper::SimplePushConstantData), &push_constant);
             renderable.model->bind(cmd_buffer);
             renderable.model->draw(cmd_buffer);  
         });

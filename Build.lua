@@ -13,6 +13,7 @@ shaderdir = outputdir .. "/shaders"
 
 group "Dependencies"
     include "Engine/Vendor/glfw"
+    include "Engine/Vendor/assimp"
 group ""
 
 group "Engine"

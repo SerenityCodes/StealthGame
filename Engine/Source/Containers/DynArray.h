@@ -132,6 +132,8 @@ public:
     T& operator[](size_t index) const;
     T& operator[](size_t index);
     void push_back(const T& value);
+    template <typename It>
+    void add_from_container(It begin, It end);
 
     iterator begin();
     const_iterator begin() const;
@@ -274,6 +276,14 @@ void DynArray<T>::push_back(const T& value) {
         resize(m_capacity_ * 2);
     }
     m_data_ptr_[m_size_++] = value;
+}
+
+template <typename T>
+template <typename It>
+void DynArray<T>::add_from_container(It begin, It end) {
+    for (auto it = begin; it != end; ++it) {
+        push_back(*it);
+    }
 }
 
 template<typename T>

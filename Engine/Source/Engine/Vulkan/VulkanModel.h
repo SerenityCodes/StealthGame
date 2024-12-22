@@ -8,6 +8,7 @@
 #include "Containers/ArrayRef.h"
 #include "Containers/DynArray.h"
 #include "Wrappers/DeviceWrapper.h"
+#include <iostream>
 
 namespace engine::vulkan {
 
@@ -20,7 +21,7 @@ public:
         glm::vec2 uv;
 
         static VkVertexInputBindingDescription get_binding_descriptions();
-        static std::array<VkVertexInputAttributeDescription, 2> get_attribute_descriptions();
+        static std::array<VkVertexInputAttributeDescription, 4> get_attribute_descriptions();
 
         bool operator==(const Vertex& other) const {
             return position == other.position && color == other.color && normal == other.normal && uv == other.uv;
@@ -32,7 +33,7 @@ public:
         DynArray<Vertex> vertices;
         DynArray<uint32_t> indices;
 
-        void load_model(Arena& temp_arena, const char* file_path);
+        void load_model(Arena& temp_arena, const char* file_path, uint32_t import_flags);
     };
     
 private:
@@ -49,7 +50,7 @@ public:
     VulkanModel(DeviceWrapper* device_wrapper, VkCommandPool command_pool, const VertexIndexInfo& vertices);
     ~VulkanModel();
 
-    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path);
+    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path, uint32_t import_flags);
 
     VulkanModel(const VulkanModel&) = delete;
     VulkanModel& operator=(const VulkanModel&) = delete;

@@ -35,7 +35,7 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
      m_permanent_arena_(default_stack_size),
     m_vulkan_wrapper_(m_temp_arena_),
     m_renderer_(m_temp_arena_, m_permanent_arena_,
-        &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
+    &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
     m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device())
     {
     
@@ -43,6 +43,7 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
 
 void StealthEngine::run() {
     m_world_.add<VulkanRenderInfo>();
+    m_world_.set<components::WindowComponent>({m_vulkan_wrapper_.window().raw_window()});
     systems::setup_render_system(m_world_);
     bool should_continue = true;
     while (!m_vulkan_wrapper_.window().should_close() && should_continue) {
@@ -71,8 +72,8 @@ vulkan::VulkanModel StealthEngine::create_model(
     return {m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), index_info};
 }
 
-vulkan::VulkanModel StealthEngine::load_model(const char* file_name) {
-    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), file_name);
+vulkan::VulkanModel StealthEngine::load_model(const char* file_name, uint32_t import_flags) {
+    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), file_name, import_flags);
 }
 
 float StealthEngine::get_aspect_ratio() const {

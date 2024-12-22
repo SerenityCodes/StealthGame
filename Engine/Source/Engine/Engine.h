@@ -1,13 +1,11 @@
 #pragma once
 
 #include "Containers/ArrayRef.h"
-#include "ECS/World.h"
 #include "Memory/Arena.h"
 #include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanWrapper.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
 #include "../Vendor/flecs/flecs.h"
-#include "Vulkan/VulkanRenderInfo.h"
 
 namespace engine {
 	class StealthEngine {
@@ -28,7 +26,7 @@ namespace engine {
 	    void run();
 	    flecs::world& get_world();
 	    vulkan::VulkanModel create_model(const vulkan::VulkanModel::VertexIndexInfo& index_info);
-	    vulkan::VulkanModel load_model(const char* file_name);
+	    vulkan::VulkanModel load_model(const char* file_name, uint32_t import_flags);
 	    float get_aspect_ratio() const;
 
 	    static ArrayRef<char> read_temporary_file(Arena& temp_arena, const char* file_name);

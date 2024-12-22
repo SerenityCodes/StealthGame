@@ -8,7 +8,7 @@ project "Engine"
    files { "Source/**.h", "Source/**.cpp",
    "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp",
    "Vendor/tiny_obj_loader/tiny_obj_loader.h",
-   "Vendor/flecs/**.h", "Vendor/flecs/**.cpp",
+   "Vendor/flecs/**.h", "Vendor/flecs/**.c",
    "Shaders/**.vert", "Shaders/**.frag" }
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
@@ -17,18 +17,18 @@ project "Engine"
    {
         "GLFW_INCLUDE_VULKAN",
         "GLM_FORCE_RADIANS",
-        "GLM_FORCE_DEPTH_ZERO_TO_ONE",
-        "TINYOBJLOADER_IMPLEMENTATION"
+        "GLM_FORCE_DEPTH_ZERO_TO_ONE"
    }
 
-   links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW" }
+   links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp" }
 
    includedirs
    {
       "Source",
       vulkanSDKPath .. "/Include",
       "Vendor/glfw/include",
-      "Vendor/glm/glm"
+      "Vendor/glm/glm",
+      "Vendor/assimp/include"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
@@ -54,12 +54,3 @@ project "Engine"
        runtime "Release"
        optimize "On"
        symbols "Off"
-
-   filter { "files:**.vert" }
-      flags "ExcludeFromBuild"
-      shadermodel "5.0"
-   filter { "files:**.frag" }
-      removeflags "ExcludeFromBuild"
-      shadertype "Fragment"
-      shaderentry "ForFragment"
-    filter {}

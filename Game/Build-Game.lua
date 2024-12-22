@@ -13,7 +13,8 @@ project "Game"
 	  -- Include Core
 	  "../Engine/Source",
 	  os.getenv("VULKAN_SDK") .. "/Include",
-	  "../Engine/Vendor/glfw/include"
+	  "../Engine/Vendor/glfw/include",
+	  "../Engine/Vendor/assimp/include"
    }
 
    links
