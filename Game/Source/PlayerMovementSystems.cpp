@@ -8,7 +8,7 @@
 void setup_input_keyboard_system(flecs::world& world) {
     world.system<KeyboardMovement, Velocity>()
     .kind(flecs::PreUpdate)
-    .each([](flecs::entity entity, KeyboardMovement& input_keyboard, Velocity& velocity) {
+    .each([](flecs::entity entity, KeyboardMovement& input_keyboard) {
         GLFWwindow* window = entity.world().get<components::WindowComponent>()->window_ptr;
         input_keyboard.forward = 0;
         input_keyboard.right = 0;
@@ -58,13 +58,14 @@ void setup_keyboard_movement(flecs::world& world) {
         float delta_time = entity.world().delta_time();
         velocity.direction = move_dir * move_speed;
         transform.translation += velocity.direction * delta_time;
-
+        
         glm::vec3 rotate{0.f};
         rotate.x = static_cast<float>(movement.look_up);
         rotate.y = static_cast<float>(movement.look_right);
         if (glm::dot(rotate, rotate) > glm::epsilon<float>()) {
             transform.rotation += look_speed * delta_time * glm::normalize(rotate);
         }
+        
         Camera* camera = entity.world().get_mut<Camera>();
         camera->set_view_yxz(transform.translation, transform.rotation);
     });

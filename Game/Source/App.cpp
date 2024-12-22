@@ -19,9 +19,9 @@ glm::vec3 get_random_direction() {
 }
 
 void spawn_and_move_cube(const flecs::world& world) {
-    world.system<components::Transform3D, Velocity>()
+    world.system<components::Transform3D, Velocity, components::Renderable>()
         .kind(flecs::OnUpdate)
-        .each([](flecs::entity entity, components::Transform3D& transform, Velocity& velocity) {
+        .each([](flecs::entity entity, components::Transform3D& transform, Velocity& velocity, components::Renderable& renderable) {
             constexpr float rotation_speed = 0.5f;
             constexpr float fall_speed = 0.01f;
             float delta_time = entity.world().delta_time();
@@ -30,7 +30,6 @@ void spawn_and_move_cube(const flecs::world& world) {
 
             // Send it in a random direction
             transform.translation += velocity.speed * velocity.direction * delta_time;
-            
            if (transform.translation.x > 1.0f || transform.translation.x < -1.0f || transform.translation.y > 1.0f || transform.translation.y < -1.0f) {
                entity.destruct();
            } 
