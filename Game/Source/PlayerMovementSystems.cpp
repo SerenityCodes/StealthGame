@@ -6,12 +6,13 @@
 #include "Engine/Vulkan/Camera.h"
 
 void setup_input_keyboard_system(flecs::world& world) {
-    world.system<KeyboardMovement, Velocity>()
+    world.system<KeyboardMovement>()
     .kind(flecs::PreUpdate)
     .each([](flecs::entity entity, KeyboardMovement& input_keyboard) {
         GLFWwindow* window = entity.world().get<components::WindowComponent>()->window_ptr;
         input_keyboard.forward = 0;
         input_keyboard.right = 0;
+        input_keyboard.up = 0;
         input_keyboard.look_right = 0;
         input_keyboard.look_up = 0;
         
@@ -39,6 +40,12 @@ void setup_input_keyboard_system(flecs::world& world) {
         if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
             input_keyboard.look_right += 1;
         }
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            input_keyboard.up -= 1;
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+            input_keyboard.up += 1;
+        }
     });
 }
 
@@ -51,6 +58,7 @@ void setup_keyboard_movement(flecs::world& world) {
         glm::vec3 move_dir = glm::vec3{0.f};
         move_dir.z += static_cast<float>(movement.forward);
         move_dir.x += static_cast<float>(movement.right);
+        move_dir.y += static_cast<float>(movement.up);
         if (glm::dot(move_dir, move_dir) > glm::epsilon<float>()) {
             move_dir = glm::normalize(move_dir);
         }

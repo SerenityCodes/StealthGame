@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include "Systems/CoreEngineSystems.h"
-#include "Vulkan/Camera.h"
 #include "Vulkan/VulkanRenderInfo.h"
 
 void* operator new(size_t size) {
@@ -25,7 +24,7 @@ void* operator new[](size_t size) {
 
 void operator delete[](void* p) noexcept {
     free(p);
-}
+} 
 
 namespace engine {
 

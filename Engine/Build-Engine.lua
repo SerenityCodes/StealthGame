@@ -9,7 +9,8 @@ project "Engine"
    "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp",
    "Vendor/tiny_obj_loader/tiny_obj_loader.h",
    "Vendor/flecs/**.h", "Vendor/flecs/**.c",
-   "Shaders/**.vert", "Shaders/**.frag" }
+   "Shaders/**.vert", "Shaders/**.frag",
+    "Vendor/vma/include/**.h"}
 
    local vulkanSDKPath = os.getenv("VULKAN_SDK")
 

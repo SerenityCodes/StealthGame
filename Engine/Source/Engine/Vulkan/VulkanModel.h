@@ -2,13 +2,13 @@
 #include <vulkan/vulkan_core.h>
 
 #include <glm/vec2.hpp>
-
 #include <glm/vec3.hpp>
 
-#include "Containers/ArrayRef.h"
 #include "Containers/DynArray.h"
 #include "Wrappers/DeviceWrapper.h"
 #include <iostream>
+
+#include "Wrappers/DeviceBufferWrapper.h"
 
 namespace engine::vulkan {
 
@@ -38,17 +38,15 @@ public:
     
 private:
     DeviceWrapper* m_device_wrapper_;
-    VkBuffer m_vertex_buffer_;
-    VkBuffer m_index_buffer_;
-    VkDeviceMemory m_vertex_buffer_memory_;
-    VkDeviceMemory m_index_buffer_memory_;
-    uint32_t m_vertex_count_;
-    uint32_t m_index_count_;
+    size_t m_vertex_count_;
+    size_t m_index_count_;
+    DeviceBufferWrapper m_vertex_buffer_;
+    DeviceBufferWrapper m_index_buffer_;
 
     static void create_buffer_from_staging(DeviceWrapper* device_wrapper, VkCommandPool command_pool, VkDeviceSize size, VkBufferUsageFlags usage, void* data_to_copy, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
 public:
     VulkanModel(DeviceWrapper* device_wrapper, VkCommandPool command_pool, const VertexIndexInfo& vertices);
-    ~VulkanModel();
+    ~VulkanModel() = default;
 
     static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path, uint32_t import_flags);
 

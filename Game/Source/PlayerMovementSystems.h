@@ -14,6 +14,7 @@ struct Velocity {
 struct KeyboardMovement {
     int forward;
     int right;
+    int up;
     int look_up;
     int look_right;
 };

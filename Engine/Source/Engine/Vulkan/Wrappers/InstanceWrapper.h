@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <vulkan/vulkan.h>
-
 #include <array>
 
 #include "Memory/Arena.h"

@@ -6,6 +6,12 @@
 #include <cstring>
 #include <stdexcept>
 
+#include <iostream>
+#include <ostream>
+
+#define VMA_IMPLEMENTATION
+#include "../Vendor/vma/include/vk_mem_alloc.h"
+
 #include "SwapChain.h"
 
 namespace engine::vulkan {
@@ -112,9 +118,18 @@ DeviceWrapper::DeviceWrapper(Arena& temp_arena, VkSurfaceKHR surface, VkInstance
         m_graphics_queue_ = QueueWrapper{m_device_, indices[0]};
         m_present_queue_ = QueueWrapper{m_device_, indices[1]};
     }
+
+    VmaAllocatorCreateInfo allocator_create_info{};
+    allocator_create_info.device = m_device_;
+    allocator_create_info.instance = instance;
+    allocator_create_info.physicalDevice = m_physical_device_;
+    allocator_create_info.vulkanApiVersion = VK_API_VERSION_1_3;
+    allocator_create_info.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    vmaCreateAllocator(&allocator_create_info, &m_allocator_);
 }
 
 DeviceWrapper::~DeviceWrapper() {
+    vmaDestroyAllocator(m_allocator_);
     vkDestroyDevice(m_device_, nullptr);
 }
 
@@ -140,6 +155,10 @@ QueueWrapper DeviceWrapper::get_present_queue() const {
 
 QueueWrapper::QueueFamily DeviceWrapper::get_graphics_queue_family() const {
     return m_graphics_queue_family_;
+}
+
+VmaAllocator DeviceWrapper::get_allocator() const {
+    return m_allocator_;
 }
 
 VkCommandBuffer DeviceWrapper::get_one_time_command_buffer(VkCommandPool command_pool) const {
@@ -195,31 +214,22 @@ uint32_t DeviceWrapper::find_memory_type(uint32_t type_filter, VkMemoryPropertyF
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void DeviceWrapper::create_buffer(VkDeviceSize size, VkBufferUsageFlags flags,
-    VkMemoryPropertyFlags properties, VkBuffer* buffer,
-    VkDeviceMemory* buffer_memory) const {
+void DeviceWrapper::create_buffer(VkDeviceSize size, VkBufferUsageFlags buffer_flags, VmaAllocationCreateFlags allocation_flags, VkBuffer* buffer,
+    VmaAllocation* allocation) const {
     VkBufferCreateInfo buffer_create_info{};
     buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_create_info.size = size;
-    buffer_create_info.usage = flags;
+    buffer_create_info.usage = buffer_flags;
     buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(m_device_, &buffer_create_info, nullptr, buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create buffer!");
+    VmaAllocationCreateInfo allocation_create_info{};
+    allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
+    allocation_create_info.flags = allocation_flags;
+
+    if (vmaCreateBuffer(m_allocator_, &buffer_create_info, &allocation_create_info, buffer, allocation, nullptr) != VK_SUCCESS) {
+        std::cerr << "Failed to create buffer!" << std::endl;
+        assert(false);
     }
-
-    VkMemoryRequirements memory_requirements;
-    vkGetBufferMemoryRequirements(m_device_, *buffer, &memory_requirements);
-    VkMemoryAllocateInfo memory_allocate_info{};
-    memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memory_allocate_info.allocationSize = memory_requirements.size;
-    memory_allocate_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, properties);
-
-    if (vkAllocateMemory(m_device_, &memory_allocate_info, nullptr, buffer_memory) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate buffer memory!");
-    }
-
-    vkBindBufferMemory(m_device_, *buffer, *buffer_memory, 0);
 }
 
 }
