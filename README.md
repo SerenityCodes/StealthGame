@@ -1,22 +1,22 @@
 # Overview
-Zap is a data-oriented, game-focused programming language designed to deliver near “bare-metal” performance while providing modern conveniences:
-* Built-in ECS (Entity-Component-System) for game logic.
-* Arena-based memory for predictable allocations, plus an optional reference-counted heap for dynamic objects.
-* Job system for concurrency, letting you easily spawn parallel tasks.
-* Compile-time execution using aot {} blocks for precomputing values or asset sizes.
-* Minimal runtime overhead—the compiler uses LLVM for native AOT compilation.
-* No mandatory memory safety (unlike Rust), but with optional leak detection in debug builds.
 
-Philosophy:
-* Keep the language simple and explicit.
-* Embrace data-oriented design: direct control over how data is laid out and processed.
-* Provide high-performance by default, with optional dynamic features.
-* Offer a “batteries-included” engine framework—Zap is not just a language, but a full game toolset.
+SteathGame (yet to be named) is a game with a custom made engine that was made as a learning experience to learn more about how 3D rendering works from the graphics API up to the application.
 
-## Project Structure
+## Components
 
-`Engine/` holds the engine library used to initialize the Vulkan instance for ease of use in the compiler/interepter. `Compiler/` holds all of the compiler code that compiles down to bytecode and/or LLVM IR.
+There are two main projects that come together to make the game.
 
-# Build Instructions
-1. Clone the repository `git clone https://github.com/SerenityCodes/ZapLang`
-2. Open the `Scripts/` directory and run the appropriate `Setup` script to generate projects files. You can edit the setup scripts to change the type of project that is generated - out of the box they are set to Visual Studio 2022 for Windows and gmake2 for Linux.
+1. Engine (/Engine)
+2. Game (/Game)
+
+Engine contains all of the necessary logic to interact with Vulkan, and provides an interface to make it easy to make render passes, and submit commands. The engine also defines systems for the ECS to run, but does not impede on the games systems. The game defines the systems before the engine runs the main game loop.
+
+Game contains all of the game logic, and contains all of the models needed to run the game. This game is a very simple game, with the goal in mind of making it custom.
+
+## Why make Engine a static lib?
+
+The goal was to seperate the "engine" from the "game". However, the farther I got into the project, the more I realized that the benefit of having a custom engine, is to be able to tune it specifically to the game. Seperating the two requires me to think about how to make the engine the best it can be, and how to generalize without taking a hit to performance.
+
+# Build
+
+To build this project, run the appropriate script `Scripts/Setup-<platform>` to generate either a Makefile or Visual Studio Solution. Once one of those is setup, either run `make` or build the solution to run the project. It's that simple!
