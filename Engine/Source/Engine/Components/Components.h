@@ -68,6 +68,18 @@ struct Transform3D {
             },
         };
     }
+
+    glm::vec3 forward() const {
+        return glm::normalize(glm::vec3(normal_matrix()[2]));
+    }
+
+    glm::vec3 up() const {
+        return glm::normalize(glm::vec3(normal_matrix()[1]));
+    }
+
+    glm::vec3 right() const {
+        return glm::normalize(glm::vec3(normal_matrix()[0]));
+    }
 };
 
 struct Renderable {

@@ -56,9 +56,9 @@ void setup_keyboard_movement(flecs::world& world) {
         constexpr float move_speed = 3.f;
         constexpr float look_speed = 1.5f;
         glm::vec3 move_dir = glm::vec3{0.f};
-        move_dir.z += static_cast<float>(movement.forward);
-        move_dir.x += static_cast<float>(movement.right);
-        move_dir.y += static_cast<float>(movement.up);
+        move_dir += static_cast<float>(movement.forward) * transform.forward();
+        move_dir += static_cast<float>(movement.right) * transform.right();
+        move_dir += static_cast<float>(movement.up) * transform.up();
         if (glm::dot(move_dir, move_dir) > glm::epsilon<float>()) {
             move_dir = glm::normalize(move_dir);
         }
