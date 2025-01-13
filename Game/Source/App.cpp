@@ -5,6 +5,7 @@
 #include "Engine/Components/Components.h"
 #include "Engine/Systems/CoreEngineSystems.h"
 #include "Engine/Vulkan/Camera.h"
+
 #include "assimp/postprocess.h"
 
 glm::vec3 get_random_direction() {
@@ -78,8 +79,8 @@ int main() {
     | aiProcess_OptimizeMeshes
     | aiProcess_MakeLeftHanded
     | aiProcess_JoinIdenticalVertices;
-    engine::vulkan::VulkanModel vase_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/smooth_vase.obj", import_flags);
-    engine::vulkan::VulkanModel cube_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthEngine/Game/Models/flat_vase.obj", import_flags);
+    engine::vulkan::VulkanModel vase_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthGame/Game/Models/smooth_vase", import_flags);
+    engine::vulkan::VulkanModel cube_model = engine.load_model("C:/Users/LyftDriver/Projects/StealthGame/Game/Models/flat_vase", import_flags);
     engine::vulkan::VulkanModel* models[2] = {&vase_model, &cube_model};
     initialize_world(world, ArrayRef{models, 2}, engine.get_aspect_ratio());
     setup_input_keyboard_system(world);

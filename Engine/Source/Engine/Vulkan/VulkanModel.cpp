@@ -3,8 +3,6 @@
 #include <array>
 #include <fstream>
 
-#include <unordered_map>
-
 #include "Memory/STLArenaAllocator.h"
 #include "assimp/Importer.hpp"
 #include "assimp/StringComparison.h"
@@ -117,20 +115,62 @@ void process_node(aiNode* node, const aiScene* scene, DynArray<VulkanModel::Vert
     }
 }
 
-void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* file_path, uint32_t import_flags) {
-    Assimp::Importer importer;
+void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* base_model_path, uint32_t import_flags) {
+    using temp_string = std::basic_string<char, std::char_traits<char>, STLArenaAllocator<char>>;
+    temp_string obj_path = base_model_path + temp_string{".obj", STLArenaAllocator<char>{&temp_arena}};
+    temp_string processed_path = base_model_path + temp_string{".processed", STLArenaAllocator<char>{&temp_arena}};
+    bool has_been_processed = std::filesystem::exists(processed_path);
+    if (std::filesystem::exists(obj_path) && !has_been_processed) {
+        Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(file_path, import_flags);
-    if (!scene) {
-        std::cerr << "Failed to load model" << std::endl;
-        return;
-    }
-    vertices.clear();
-    indices.clear();
+        const aiScene* scene = importer.ReadFile(obj_path.c_str(), import_flags);
+        if (!scene) {
+            std::cerr << "Failed to load model\n";
+            return;
+        }
+        vertices.clear();
+        indices.clear();
     
-    process_node(scene->mRootNode, scene, vertices, indices);
-    vertices.resize(vertices.size());
-    indices.resize(indices.size());
+        process_node(scene->mRootNode, scene, vertices, indices);
+        vertices.resize(vertices.size());
+        indices.resize(indices.size());
+        
+        // Write out custom format
+        std::ofstream file{processed_path.c_str()};
+        file << vertices.size() << "\n";
+        for (auto& [position, color, normal, uv] : vertices) {
+            file << position.x << ' ' << position.y << ' ' << position.z << "\n";
+            file << color.r << ' ' << color.g << ' ' << color.b << "\n";
+            file << normal.x << ' ' << normal.y << ' ' << normal.z << "\n";
+            file << uv.x << ' ' << uv.y << "\n";
+        }
+        file << indices.size() << "\n";
+        for (auto& index : indices) {
+            file << index << "\n";
+        }
+    } else if (has_been_processed) {
+        std::ifstream file{processed_path.c_str(), std::ios::binary};
+        file.seekg(0, std::ios::beg);
+        uint32_t vertices_count;
+        file >> vertices_count;
+        vertices.resize(vertices_count);
+        for (uint32_t i = 0; i < vertices_count; i++) {
+            Vertex vertex;
+            file >> vertex.position.x >> vertex.position.y >> vertex.position.z;
+            file >> vertex.color.r >> vertex.color.g >> vertex.color.b;
+            file >> vertex.normal.x >> vertex.normal.y >> vertex.normal.z;
+            file >> vertex.uv.x >> vertex.uv.y;
+            vertices.push_back(vertex);
+        }
+        uint32_t indices_count;
+        file >> indices_count;
+        indices.resize(indices_count);
+        for (uint32_t i = 0; i < indices_count; i++) {
+            uint32_t index;
+            file >> index;
+            indices.push_back(index);
+        }
+    }
 }
 
 VulkanModel::VulkanModel(DeviceWrapper* device_wrapper,

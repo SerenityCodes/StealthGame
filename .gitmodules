@@ -4,3 +4,6 @@
 [submodule "Engine/Vendor/assimp"]
 	path = Engine/Vendor/assimp
 	url = https://github.com/AminAliari/assimp.git
+[submodule "Engine/Vendor/glfw"]
+	path = Engine/Vendor/glfw
+	url = git@github.com:TheCherno/glfw.git

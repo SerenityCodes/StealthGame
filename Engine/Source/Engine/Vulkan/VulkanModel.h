@@ -33,7 +33,7 @@ public:
         DynArray<Vertex> vertices;
         DynArray<uint32_t> indices;
 
-        void load_model(Arena& temp_arena, const char* file_path, uint32_t import_flags);
+        void load_model(Arena& temp_arena, const char* base_model_path, uint32_t import_flags);
     };
     
 private:
