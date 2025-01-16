@@ -14,6 +14,7 @@ shaderdir = outputdir .. "/shaders"
 group "Dependencies"
     include "Engine/Vendor/glfw"
     include "Engine/Vendor/assimp"
+    include "Engine/Vendor/imgui-premake"
 group ""
 
 group "Engine"

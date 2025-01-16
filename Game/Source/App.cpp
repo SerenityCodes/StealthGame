@@ -45,9 +45,9 @@ void spawn_and_move_cube(const flecs::world& world) {
                timer = 0.0f;
                auto world = entity.world();
                flecs::entity cube = world.entity().is_a(entity);
-               cube.set<components::Transform3D>({.translation  = {0.f, 0.f, 2.5f}, .rotation = {0.f, 0.f, 0.f}, .scale = {.5f, .5f, .5f}});
-               cube.set<components::Renderable>({renderable.model});
-               cube.set<Velocity>({.direction = get_random_direction(), .speed = .5f});
+               cube.set<components::Transform3D>({.translation  = {0.f, 0.f, 2.5f}, .rotation = {0.f, 0.f, 0.f}, .scale = {.5f, .5f, .5f}})
+                   .set<components::Renderable>({renderable.model})
+                   .set<Velocity>({.direction = get_random_direction(), .speed = .5f});
            }
         });
 }

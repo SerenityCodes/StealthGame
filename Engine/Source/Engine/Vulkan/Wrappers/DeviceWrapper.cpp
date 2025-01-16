@@ -38,7 +38,7 @@ bool check_device_extension_support(Arena& temp_arena, VkPhysicalDevice device) 
     auto check_func = [needed_extensions](VkExtensionProperties extension) {
         return strcmp(extension.extensionName, needed_extensions[0]) == 0;
     };
-    ArrayRef<VkExtensionProperties> available_extensions{arr, extension_count};
+    ArrayRef available_extensions{arr, extension_count};
     return std::any_of(available_extensions.begin(), available_extensions.end(), check_func);
 }
 
@@ -69,30 +69,29 @@ DeviceWrapper::DeviceWrapper(Arena& temp_arena, VkSurfaceKHR surface, VkInstance
     QueueWrapper::QueueFamily family = QueueWrapper::find_indices(temp_arena, surface, m_physical_device_);
     m_graphics_queue_family_ = family;
     uint32_t indices[] = {family.graphics_family_index, family.present_family_index};
-    VkDeviceQueueCreateInfo* create_infos;
-    int queue_create_count;
-    float queue_priority = 1.0f;
+    ArrayRef<VkDeviceQueueCreateInfo> create_infos;
+    constexpr float queue_priority = 1.0f;
     if (indices[0] != indices[1]) {
-        VkDeviceQueueCreateInfo stack_create_infos[2];
-        queue_create_count = 2;
-        create_infos = stack_create_infos;
+        constexpr int queues_to_create = 2;
+        create_infos = ArrayRef{static_cast<VkDeviceQueueCreateInfo*>(temp_arena.push(sizeof(VkDeviceQueueCreateInfo) * queues_to_create)), queues_to_create};
         for (int i = 0; i < 2; i++) {
-            stack_create_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            stack_create_infos[i].queueFamilyIndex = indices[i];
-            stack_create_infos[i].queueCount = 1;
-            stack_create_infos->pQueuePriorities = &queue_priority;
-            stack_create_infos[i].pNext = nullptr;
+            create_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            create_infos[i].queueFamilyIndex = indices[i];
+            create_infos[i].queueCount = 1;
+            create_infos[i].pQueuePriorities = &queue_priority;
+            create_infos[i].pNext = nullptr;
         }
     } else {
-        queue_create_count = 1;
-        VkDeviceQueueCreateInfo create_info{};
+        constexpr int queues_to_create = 1;
+        create_infos = ArrayRef{static_cast<VkDeviceQueueCreateInfo*>(temp_arena.push(sizeof(VkDeviceQueueCreateInfo))), queues_to_create};
+        VkDeviceQueueCreateInfo create_info;
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         create_info.queueFamilyIndex = indices[0];
-        create_info.queueCount = queue_create_count;
+        create_info.queueCount = 1;
         create_info.pQueuePriorities = &queue_priority;
         create_info.flags = 0;
         create_info.pNext = nullptr;
-        create_infos = &create_info;
+        create_infos[0] = create_info;
     }
 
     const char* enabled_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -101,17 +100,17 @@ DeviceWrapper::DeviceWrapper(Arena& temp_arena, VkSurfaceKHR surface, VkInstance
     create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     create_info.enabledExtensionCount = 1;
     create_info.ppEnabledExtensionNames = enabled_extensions;
-    create_info.queueCreateInfoCount = queue_create_count;
-    create_info.pQueueCreateInfos = create_infos;
+    create_info.queueCreateInfoCount = static_cast<uint32_t>(create_infos.size());
+    create_info.pQueueCreateInfos = create_infos.data();
+#ifdef DEBUG
     create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
-    if (!validation_layers.empty()) {
-        create_info.ppEnabledLayerNames = validation_layers.data();
-    }
+    create_info.ppEnabledLayerNames = validation_layers.data();
+#endif
+    assert(m_device_ == VK_NULL_HANDLE);
     if (vkCreateDevice(m_physical_device_, &create_info, nullptr, &m_device_) != VK_SUCCESS) {
         assert(false);
     }
-
-    if (queue_create_count == 1) {
+    if (create_infos.size() == 1) {
         m_graphics_queue_ = QueueWrapper{m_device_, indices[0]};
         m_present_queue_ = QueueWrapper{m_device_, indices[0]};
     } else {

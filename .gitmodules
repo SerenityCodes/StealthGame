@@ -7,3 +7,6 @@
 [submodule "Engine/Vendor/glfw"]
 	path = Engine/Vendor/glfw
 	url = git@github.com:TheCherno/glfw.git
+[submodule "Engine/Vendor/imgui-premake"]
+	path = Engine/Vendor/imgui-premake
+	url = https://github.com/ccleavinger/imgui-premake.git

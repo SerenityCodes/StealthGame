@@ -21,7 +21,7 @@ project "Engine"
         "GLM_FORCE_DEPTH_ZERO_TO_ONE"
    }
 
-   links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp" }
+   links { vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp", "imgui" }
 
    includedirs
    {
@@ -29,7 +29,8 @@ project "Engine"
       vulkanSDKPath .. "/Include",
       "Vendor/glfw/include",
       "Vendor/glm/glm",
-      "Vendor/assimp/include"
+      "Vendor/assimp/include",
+      "Vendor/imgui-premake"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
