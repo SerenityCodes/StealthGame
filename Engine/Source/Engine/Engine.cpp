@@ -6,6 +6,7 @@
 
 #include "Systems/CoreEngineSystems.h"
 #include "Vulkan/VulkanRenderInfo.h"
+#include "Logging/Logger.h"
 
 void* operator new(size_t size) {
     std::cout << "Allocated " << std::dec << size << " bytes\n";
@@ -37,10 +38,11 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
     &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
     m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device())
     {
-    
+    Logger::Init();
 }
 
 void StealthEngine::run() {
+    ENGINE_LOG_INFO("Starting run engine...")
     m_world_.add<VulkanRenderInfo>();
     m_world_.set<components::WindowComponent>({m_vulkan_wrapper_.window().raw_window()});
     systems::setup_render_system(m_world_);

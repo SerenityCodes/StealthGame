@@ -16,6 +16,8 @@
 
 namespace engine::vulkan {
 
+namespace {
+
 bool is_device_suitable(VkPhysicalDevice physical_device) {
     VkPhysicalDeviceProperties device_properties;
     VkPhysicalDeviceFeatures device_features;
@@ -63,6 +65,8 @@ VkPhysicalDevice pick_physical_device(Arena& temp_arena, VkSurfaceKHR surface, V
     }
     // Not supposed to make it here
     throw std::runtime_error("failed to find suitable GPU!");
+}
+
 }
 
 DeviceWrapper::DeviceWrapper(Arena& temp_arena, VkSurfaceKHR surface, VkInstance instance, const std::array<const char*, 1>& validation_layers) : m_device_(VK_NULL_HANDLE), m_physical_device_(pick_physical_device(temp_arena, surface, instance)) {

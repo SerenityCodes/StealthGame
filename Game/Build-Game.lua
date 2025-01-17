@@ -14,7 +14,8 @@ project "Game"
 	  "../Engine/Source",
 	  os.getenv("VULKAN_SDK") .. "/Include",
 	  "../Engine/Vendor/glfw/include",
-	  "../Engine/Vendor/assimp/include"
+	  "../Engine/Vendor/assimp/include",
+	  "../Engine/Vendor/spdlog-premake/include"
    }
 
    links
