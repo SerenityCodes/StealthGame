@@ -9,7 +9,7 @@
 #include "Logging/Logger.h"
 
 void* operator new(size_t size) {
-    std::cout << "Allocated " << std::dec << size << " bytes\n";
+    std::cout << "Allocated bytes: " << size << "\n";
     return malloc(size);
 }
 
@@ -19,7 +19,7 @@ void operator delete(void* p) noexcept {
 }
 
 void* operator new[](size_t size) {
-    std::cout << "Allocated " << std::dec << size << " bytes\n";
+    std::cout << "Allocated bytes: " << size << "\n";
     return malloc(size);
 }
 
@@ -42,7 +42,7 @@ StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
 }
 
 void StealthEngine::run() {
-    ENGINE_LOG_INFO("Starting run engine...")
+    ENGINE_LOG_INFO("Engine starting...")
     m_world_.add<VulkanRenderInfo>();
     m_world_.set<components::WindowComponent>({m_vulkan_wrapper_.window().raw_window()});
     systems::setup_render_system(m_world_);
