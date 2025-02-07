@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "Logging/Logger.h"
+
 namespace allocators {
 
 static constexpr size_t DEFAULT_STACK_SIZE = 2 << 20;
@@ -49,9 +51,8 @@ void* StackAllocator::allocate(size_t amount, size_t alignment) {
 }
 
 void StackAllocator::free_bytes(size_t bytes_to_free) {
-    std::cout << "Freeing " << bytes_to_free << " bytes.\n";
     if (bytes_to_free > m_size_) {
-        std::cerr << "Error: Attempting to free more bytes than allocated!\n";
+        ENGINE_LOG_ERROR("Cannot free {} bytes from stack allocator. Bigger than the actual size. Wiping stack allocator.", bytes_to_free)
         m_size_ = 0;
     } else {
         m_size_ -= bytes_to_free;

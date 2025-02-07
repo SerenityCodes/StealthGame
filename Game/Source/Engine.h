@@ -6,6 +6,7 @@
 #include "Vulkan/VulkanWrapper.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
 #include "../Vendor/flecs/flecs.h"
+#include "Containers/String.h"
 
 namespace engine {
 	class StealthEngine {
@@ -26,10 +27,12 @@ namespace engine {
 	    void run();
 	    flecs::world& get_world();
 	    vulkan::VulkanModel create_model(const vulkan::VulkanModel::VertexIndexInfo& index_info);
+	    vulkan::VulkanModel load_model(const String& file_name, uint32_t import_flags);
 	    vulkan::VulkanModel load_model(const char* file_name, uint32_t import_flags);
 	    float get_aspect_ratio() const;
 
-	    static ArrayRef<char> read_temporary_file(Arena& temp_arena, const char* file_name);
+	    static ArrayRef<byte> read_temporary_file(Arena& temp_arena, const String& file_name);
+	    static ArrayRef<byte> read_temporary_file(Arena& temp_arena, const char* file_name);
 	};
 
 }

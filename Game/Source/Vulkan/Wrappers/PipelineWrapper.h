@@ -4,8 +4,9 @@
 
 #include "DeviceWrapper.h"
 #include "SwapChain.h"
-#include "Engine/Vulkan/BasicRenderer.h"
-#include "Engine/Vulkan/VulkanModel.h"
+#include "common.h"
+#include "Vulkan/BasicRenderer.h"
+#include "Vulkan/VulkanModel.h"
 
 namespace engine::vulkan {
 
@@ -34,7 +35,7 @@ public:
 
     void bind(VkCommandBuffer command_buffer) const;
     
-    static VkShaderModule create_shader_module(VkDevice device, const ArrayRef<char>& code);
+    static VkShaderModule create_shader_module(VkDevice device, const ArrayRef<byte>& code);
 };
 
 }

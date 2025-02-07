@@ -12,13 +12,9 @@ outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 shaderdir = outputdir .. "/shaders"
 
 group "Dependencies"
-    include "Engine/Vendor/glfw"
-    include "Engine/Vendor/assimp"
-    include "Engine/Vendor/imgui-premake"
-group ""
-
-group "Engine"
-	include "Engine/Build-Engine.lua"
+    include "Game/Vendor/glfw"
+    include "Game/Vendor/assimp"
+    include "Game/Vendor/imgui-premake"
 group ""
 
 include "Dependencies.lua"

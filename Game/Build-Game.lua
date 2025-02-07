@@ -5,22 +5,42 @@ project "Game"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp" }
+   files { "Source/Components/**.h", "Source/Components/**.cpp",
+    "Source/Containers/**.h", "Source/Containers/**.cpp",
+    "Source/Logging/**.h", "Source/Logging/**.cpp",
+    "Source/Memory/**.h", "Source/Memory/**.cpp",
+    "Source/Systems/**.h", "Source/Systems/**.cpp",
+    "Source/Vulkan/**.h", "Source/Vulkan/**.cpp",
+    "Source/App.cpp", "Source/common.h", "Source/Engine*",
+    "Vendor/flecs/**.h", "Vendor/flecs/**.c",
+    "Vendor/spdlog/include/**.h", "Vendor/spdlog/src/**.cpp",
+    "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp"}
+
+   defines
+   {
+       "GLFW_INCLUDE_VULKAN",
+       "GLM_FORCE_RADIANS",
+       "GLM_FORCE_DEPTH_ZERO_TO_ONE",
+       "SPDLOG_COMPILED_LIB"
+   }
+
+   local vulkanSDKPath = os.getenv("VULKAN_SDK")
 
    includedirs
    {
       "Source",
-	  -- Include Core
-	  "../Engine/Source",
-	  os.getenv("VULKAN_SDK") .. "/Include",
-	  "../Engine/Vendor/glfw/include",
-	  "../Engine/Vendor/assimp/include",
-	  "../Engine/Vendor/spdlog-premake/include"
+	  vulkanSDKPath .. "/Include",
+      "Vendor/glfw/include",
+      "Vendor/glm/glm",
+      "Vendor/assimp/include",
+      "Vendor/imgui-premake",
+      "Vendor/vma/include",
+      "Vendor/spdlog/include"
    }
 
    links
    {
-      "Engine"
+      vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp", "imgui"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
@@ -29,6 +49,9 @@ project "Game"
    filter "system:windows"
        systemversion "latest"
        defines { "WINDOWS" }
+
+   filter "toolset:msc*"
+       buildoptions { "/utf-8" }
 
    filter "configurations:Debug"
        defines { "DEBUG" }

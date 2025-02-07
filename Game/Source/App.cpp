@@ -1,10 +1,11 @@
 #include <random>
 
-#include "PlayerMovementSystems.h"
-#include "Engine/Engine.h"
-#include "Engine/Components/Components.h"
-#include "Engine/Systems/CoreEngineSystems.h"
-#include "Engine/Vulkan/Camera.h"
+#include "Systems/PlayerMovementSystems.h"
+#include "Engine.h"
+#include "Components/Components.h"
+#include "Systems/CoreEngineSystems.h"
+#include "Vulkan/Camera.h"
+#include "Vulkan/VulkanModel.h"
 
 #include "assimp/postprocess.h"
 
@@ -19,22 +20,24 @@ glm::vec3 get_random_direction() {
     return direction;
 }
 
+void rotate_system(flecs::entity entity, components::Transform3D& transform, Velocity& velocity, components::Renderable& renderable) {
+    constexpr float rotation_speed = 0.5f;
+    constexpr float fall_speed = 0.01f;
+    float delta_time = entity.world().delta_time();
+    transform.rotation.x = glm::mod(transform.rotation.x + delta_time * rotation_speed, glm::two_pi<float>());
+    transform.rotation.y = glm::mod(transform.rotation.y + delta_time * rotation_speed * 2, glm::two_pi<float>());
+
+    // Send it in a random direction
+    transform.translation += velocity.speed * velocity.direction * delta_time;
+    if (transform.translation.x > 1.0f || transform.translation.x < -1.0f || transform.translation.y > 1.0f || transform.translation.y < -1.0f) {
+        entity.destruct();
+    } 
+}
+
 void spawn_and_move_cube(const flecs::world& world) {
     world.system<components::Transform3D, Velocity, components::Renderable>()
         .kind(flecs::OnUpdate)
-        .each([](flecs::entity entity, components::Transform3D& transform, Velocity& velocity, components::Renderable& renderable) {
-            constexpr float rotation_speed = 0.5f;
-            constexpr float fall_speed = 0.01f;
-            float delta_time = entity.world().delta_time();
-            transform.rotation.x = glm::mod(transform.rotation.x + delta_time * rotation_speed, glm::two_pi<float>());
-            transform.rotation.y = glm::mod(transform.rotation.y + delta_time * rotation_speed * 2, glm::two_pi<float>());
-
-            // Send it in a random direction
-            transform.translation += velocity.speed * velocity.direction * delta_time;
-           if (transform.translation.x > 1.0f || transform.translation.x < -1.0f || transform.translation.y > 1.0f || transform.translation.y < -1.0f) {
-               entity.destruct();
-           } 
-        });
+        .each(rotate_system);
     world.system<components::Renderable>()
         .with(flecs::Prefab)
         .kind(flecs::OnUpdate)
@@ -69,7 +72,6 @@ void initialize_world(const flecs::world& world, ArrayRef<engine::vulkan::Vulkan
 }
 
 int main() {
-    Arena cube_arena{2 << 20};
 	engine::StealthEngine engine;
     flecs::world& world = engine.get_world();
     // For more info on import flags, go here

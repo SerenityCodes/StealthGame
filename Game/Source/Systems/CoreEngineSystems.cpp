@@ -1,6 +1,6 @@
 ﻿#include "CoreEngineSystems.h"
 
-#include "Engine/Vulkan/Wrappers/PipelineWrapper.h"
+#include "Vulkan/Wrappers/PipelineWrapper.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/string_cast.hpp"
 

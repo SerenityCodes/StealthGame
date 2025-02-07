@@ -25,7 +25,7 @@ bool is_device_suitable(VkPhysicalDevice physical_device) {
     vkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
     return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-           device_features.geometryShader;
+           device_features.geometryShader && device_features.samplerAnisotropy;
 }
 
 bool check_device_extension_support(Arena& temp_arena, VkPhysicalDevice device) {

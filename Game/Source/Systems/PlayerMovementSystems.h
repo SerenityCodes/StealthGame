@@ -3,7 +3,7 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include "../../Engine/Vendor/flecs/flecs.h"
+#include "../../Vendor/flecs/flecs.h"
 
 struct Velocity {
     glm::vec3 direction;

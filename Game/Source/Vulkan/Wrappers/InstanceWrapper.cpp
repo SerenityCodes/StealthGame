@@ -5,11 +5,11 @@
 
 #include "Containers/ArrayRef.h"
 #include "GLFW/glfw3.h"
+#include "Logging/Logger.h"
 
 namespace engine::vulkan {
 
 bool check_validation_layer_support(Arena& temp_arena, const std::array<const char*, 1>& needed_layers) {
-    
     uint32_t layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
@@ -70,6 +70,7 @@ InstanceWrapper::InstanceWrapper(Arena& temp_arena, bool enable_validation_layer
     if (vkCreateInstance(&create_info, nullptr, &m_instance_) != VK_SUCCESS) {
         assert(false);
     }
+    ENGINE_LOG_INFO("Created Vulkan instance!")
 }
 
 InstanceWrapper::~InstanceWrapper() {

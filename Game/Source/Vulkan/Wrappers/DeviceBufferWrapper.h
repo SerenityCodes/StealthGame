@@ -15,6 +15,7 @@ class DeviceBufferWrapper {
 
     static VkDeviceSize aligned_size(VkDeviceSize size, VkDeviceSize alignment);
 public:
+    DeviceBufferWrapper() = default;
     DeviceBufferWrapper(DeviceWrapper* device_wrapper, VkDeviceSize instance_size, uint32_t instance_count, VkBufferUsageFlags flags, VmaAllocationCreateFlags allocation_flags, VkDeviceSize min_offset_alignment = 1);
     DeviceBufferWrapper(const DeviceBufferWrapper&) = delete;
     DeviceBufferWrapper& operator=(const DeviceBufferWrapper&) = delete;

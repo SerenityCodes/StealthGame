@@ -2,16 +2,16 @@
 
 #include <stdexcept>
 
-#include "Engine/Engine.h"
-#include "Engine/Vulkan/VulkanModel.h"
+#include "Engine.h"
+#include "Vulkan/VulkanModel.h"
 
 namespace engine::vulkan {
 
 
 PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
     m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
-    ArrayRef<char> vertex_shader_source = StealthEngine::read_temporary_file(temp_arena, "../Engine/Shaders/triangle.vert.spv");
-    ArrayRef<char> fragment_shader_source = StealthEngine::read_temporary_file(temp_arena, "../Engine/Shaders/triangle.frag.spv");
+    ArrayRef<byte> vertex_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.vert.spv");
+    ArrayRef<byte> fragment_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.frag.spv");
     m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
     m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
 
@@ -178,7 +178,7 @@ void PipelineWrapper::bind(VkCommandBuffer command_buffer) const {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_);
 }
 
-VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<char>& code) {
+VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<byte>& code) {
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();

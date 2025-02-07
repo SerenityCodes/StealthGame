@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <glm/glm.hpp>
-#include "Engine/Vulkan/VulkanModel.h"
+#include "Vulkan/VulkanModel.h"
 
 namespace components {
 

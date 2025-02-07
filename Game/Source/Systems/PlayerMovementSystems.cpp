@@ -2,8 +2,8 @@
 
 #include <glm/ext/scalar_constants.hpp>
 
-#include "Engine/Components/Components.h"
-#include "Engine/Vulkan/Camera.h"
+#include "Components/Components.h"
+#include "Vulkan/Camera.h"
 
 void setup_input_keyboard_system(flecs::world& world) {
     world.system<KeyboardMovement>()

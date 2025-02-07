@@ -1,8 +1,11 @@
 ﻿#include "Arena.h"
 
 #include <cstring>
+#include <filesystem>
 
-Arena::Arena(size_t size) : m_stack_(size) { }
+Arena::Arena(size_t size) : m_stack_(size) {
+    
+}
 
 void* Arena::push(size_t size) {
     return m_stack_.allocate(size);

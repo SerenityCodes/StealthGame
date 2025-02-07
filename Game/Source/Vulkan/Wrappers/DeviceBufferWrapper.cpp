@@ -1,6 +1,6 @@
-﻿#include <Engine/Vulkan/Wrappers/DeviceBufferWrapper.h>
+﻿#include <Vulkan/Wrappers/DeviceBufferWrapper.h>
 
-#include "../../../../Vendor/vma/include/vk_mem_alloc.h"
+#include "../../../Vendor/vma/include/vk_mem_alloc.h"
 
 namespace engine::vulkan {
 

@@ -6,6 +6,7 @@ class String {
     size_t m_length_;
     byte* m_str_;
 public:
+    String(char* c_str);
     String(Arena& arena, size_t length);
     String(Arena& arena, const char* c_str);
     
@@ -18,6 +19,7 @@ public:
     ~String() = default;
     
     size_t length() const;
+    const char* c_str(Arena& arena) const;
     
     String substr(Arena& new_str_arena, size_t start, size_t end) const;
     String substr(Arena& new_str_arena, size_t start) const;

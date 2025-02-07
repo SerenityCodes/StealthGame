@@ -2,7 +2,6 @@
 
 #include <cctype>
 #include <cstring>
-#include <cvt/wstring>
 
 #include "Memory/Arena.h"
 
@@ -15,7 +14,7 @@ String::String(Arena& arena, const char* c_str) : m_length_(strlen(c_str)), m_st
     memcpy(m_str_, c_str, m_length_ - 1);
 }
 
-String::String(String&& other) : m_length_(other.m_length_), m_str_(other.m_str_) {
+String::String(String&& other) noexcept : m_length_(other.m_length_), m_str_(other.m_str_) {
     
 }
 
@@ -29,6 +28,14 @@ String& String::operator=(String&& other) noexcept {
 
 size_t String::length() const {
     return m_length_;
+}
+
+const char* String::c_str(Arena& arena) const {
+    const size_t new_length = m_length_ + 1;
+    char* str = static_cast<char*>(arena.push(new_length));
+    memcpy(str, m_str_, m_length_);
+    str[m_length_] = '\0';
+    return str;
 }
 
 String String::substr(Arena& new_str_arena, size_t start, size_t end) const {

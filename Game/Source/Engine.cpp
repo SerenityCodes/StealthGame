@@ -1,9 +1,11 @@
 #include "Engine.h"
 
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
+#include "common.h"
 #include "Systems/CoreEngineSystems.h"
 #include "Vulkan/VulkanRenderInfo.h"
 #include "Logging/Logger.h"
@@ -31,14 +33,13 @@ namespace engine {
 
 constexpr int default_stack_size = 2 << 25;
 
-StealthEngine::StealthEngine() : m_temp_arena_(default_stack_size),
+StealthEngine::StealthEngine() : m_temp_arena_((Logger::Init(), default_stack_size)),
      m_permanent_arena_(default_stack_size),
     m_vulkan_wrapper_(m_temp_arena_),
     m_renderer_(m_temp_arena_, m_permanent_arena_,
     &m_vulkan_wrapper_.window(), m_vulkan_wrapper_.device(), m_vulkan_wrapper_.surface()),
     m_pipeline_(m_temp_arena_, &m_renderer_, m_vulkan_wrapper_.device())
     {
-    Logger::Init();
 }
 
 void StealthEngine::run() {
@@ -73,6 +74,10 @@ vulkan::VulkanModel StealthEngine::create_model(
     return {m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), index_info};
 }
 
+vulkan::VulkanModel StealthEngine::load_model(const String& file_name, uint32_t import_flags) {
+    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), file_name.c_str(m_temp_arena_), import_flags);
+}
+
 vulkan::VulkanModel StealthEngine::load_model(const char* file_name, uint32_t import_flags) {
     return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_vulkan_wrapper_.device(), m_renderer_.get_command_pool(), file_name, import_flags);
 }
@@ -81,7 +86,11 @@ float StealthEngine::get_aspect_ratio() const {
     return m_renderer_.get_aspect_ratio();
 }
 
-ArrayRef<char> StealthEngine::read_temporary_file(Arena& temp_arena, const char* file_name) {
+ArrayRef<byte> StealthEngine::read_temporary_file(Arena& temp_arena, const String& file_name) {
+    return read_temporary_file(temp_arena, file_name.c_str(temp_arena));
+}
+
+ArrayRef<byte> StealthEngine::read_temporary_file(Arena& temp_arena, const char* file_name) {
     std::ifstream file(file_name, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
@@ -91,9 +100,9 @@ ArrayRef<char> StealthEngine::read_temporary_file(Arena& temp_arena, const char*
     const std::streamsize file_size = file.tellg();
     file.seekg(0, std::ios::beg);
     const size_t bytes_needed = sizeof(char) * file_size;
-    const auto ptr = static_cast<char*>(temp_arena.push(bytes_needed));
+    byte* ptr = static_cast<byte*>(temp_arena.push(bytes_needed));
     ArrayRef buffer{ptr, static_cast<size_t>(file_size)};
-    file.read(ptr, file_size);
+    file.read(reinterpret_cast<char*>(ptr), file_size);
     file.close();
     return buffer;
 }
