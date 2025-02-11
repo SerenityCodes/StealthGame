@@ -152,6 +152,10 @@ const ArrayRef<VkImageView>& SwapChain::get_image_views() const {
     return m_image_views_;
 }
 
+uint32_t SwapChain::get_image_count() const {
+    return m_image_count_;
+}
+
 VkExtent2D SwapChain::get_swap_chain_extent() const {
     return m_swap_chain_extent_;
 }

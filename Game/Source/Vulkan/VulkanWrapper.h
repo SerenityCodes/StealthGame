@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Wrappers/DescriptorPool.h"
 #include "Wrappers/DeviceWrapper.h"
 #include "Wrappers/InstanceWrapper.h"
 #include "Wrappers/SurfaceWrapper.h"
@@ -13,6 +14,7 @@ class VulkanWrapper {
     std::array<const char*, 1> m_validation_layers_;
     SurfaceWrapper m_surface_;
     DeviceWrapper m_device_;
+    DescriptorPool m_descriptor_pool_;
 public:
     VulkanWrapper(Arena& temp_arena);
     VulkanWrapper(const VulkanWrapper&) = delete;
@@ -24,6 +26,8 @@ public:
     Window& window();
     DeviceWrapper* device();
     VkSurfaceKHR surface();
+    InstanceWrapper& instance();
+    DescriptorPool& descriptor_pool();
 };
 
 }

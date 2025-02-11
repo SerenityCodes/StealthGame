@@ -12,19 +12,15 @@ CommandBufferWrapper::CommandBufferWrapper(DeviceWrapper* device, SwapChain* swa
     command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     command_pool_create_info.queueFamilyIndex = device->get_graphics_queue_family().graphics_family_index;
     command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    
-    if (vkCreateCommandPool(*m_device_,&command_pool_create_info, nullptr, &m_command_pool_) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create command pool!");
-    }
+
+    ENGINE_ASSERT(vkCreateCommandPool(*m_device_, &command_pool_create_info, nullptr, &m_command_pool_) == VK_SUCCESS, "Failed to create command pool!")
 
     VkCommandBufferAllocateInfo command_buffer_allocate_info{};
     command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     command_buffer_allocate_info.commandPool = m_command_pool_;
     command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     command_buffer_allocate_info.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
-    if (vkAllocateCommandBuffers(*m_device_,&command_buffer_allocate_info, m_primary_command_buffers_) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to allocate command buffers!");
-    }
+    ENGINE_ASSERT(vkAllocateCommandBuffers(*m_device_, &command_buffer_allocate_info, m_primary_command_buffers_) == VK_SUCCESS, "Failed to allocate command buffers!")
 
     VkSemaphoreCreateInfo semaphore_create_info{};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -34,11 +30,9 @@ CommandBufferWrapper::CommandBufferWrapper(DeviceWrapper* device, SwapChain* swa
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        if (vkCreateSemaphore(device->get_logical_device(), &semaphore_create_info, nullptr, &m_image_available_semaphores_[i]) != VK_SUCCESS
-        || vkCreateSemaphore(device->get_logical_device(), &semaphore_create_info, nullptr, &m_render_finished_semaphores_[i]) != VK_SUCCESS
-        || vkCreateFence(device->get_logical_device(), &fence_create_info, nullptr, &m_in_flight_fences_[i]) !=  VK_SUCCESS) {
-            throw std::runtime_error("Failed to create fence!");
-        }   
+        ENGINE_ASSERT(vkCreateSemaphore(device->get_logical_device(), &semaphore_create_info, nullptr, &m_image_available_semaphores_[i]) == VK_SUCCESS
+        && vkCreateSemaphore(device->get_logical_device(), &semaphore_create_info, nullptr, &m_render_finished_semaphores_[i]) == VK_SUCCESS
+        && vkCreateFence(device->get_logical_device(), &fence_create_info, nullptr, &m_in_flight_fences_[i]) ==  VK_SUCCESS, "Failed to create fence!")
     }
 }
 
@@ -104,7 +98,7 @@ bool CommandBufferWrapper::present_command_buffer(uint32_t current_frame, uint32
         if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
             return true;
         }
-        throw std::runtime_error("Failed to present swap chain");
+        ENGINE_ASSERT(false, "Failed to present swap chain!")
     }
     return false;
 }

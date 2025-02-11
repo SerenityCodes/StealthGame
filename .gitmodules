@@ -1,12 +1,12 @@
-[submodule "Engine/Vendor/glm"]
-	path = Engine/Vendor/glm
+[submodule "Game/Vendor/glm"]
+	path = Game/Vendor/glm
 	url = git@github.com:icaven/glm.git
-[submodule "Engine/Vendor/assimp"]
-	path = Engine/Vendor/assimp
+[submodule "Game/Vendor/assimp"]
+	path = Game/Vendor/assimp
 	url = https://github.com/AminAliari/assimp.git
-[submodule "Engine/Vendor/glfw"]
-	path = Engine/Vendor/glfw
+[submodule "Game/Vendor/glfw"]
+	path = Game/Vendor/glfw
 	url = git@github.com:TheCherno/glfw.git
-[submodule "Engine/Vendor/imgui-premake"]
-	path = Engine/Vendor/imgui-premake
-	url = https://github.com/ccleavinger/imgui-premake.git
+[submodule "Game/Vendor/ImGuizmo"]
+	path = Game/Vendor/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git

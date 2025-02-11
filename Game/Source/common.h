@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
+#include "Logging/Logger.h"
 
 using byte = uint8_t;
 using u8 = uint8_t;
@@ -12,3 +13,12 @@ using i32 = int32_t;
 using i64 = int64_t;
 using f32 = float;
 using f64 = double;
+
+#ifdef DEBUG
+#define ENGINE_ASSERT(x, msg) if (!(x)) { ENGINE_LOG_ERROR("Assertion failed: {}", msg)\
+    __debugbreak();\
+    assert(false); }
+#else
+#define ENGINE_ASSERT(x, msg) if (!(x)) { ENGINE_LOG_ERROR("Assertion failed: {}", msg)\
+    assert(false) }
+#endif

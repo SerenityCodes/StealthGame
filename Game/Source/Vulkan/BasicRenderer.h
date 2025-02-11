@@ -43,6 +43,7 @@ public:
     
     ObjectHolder<SwapChain> initialize_swap_chain(Arena& temp_arena, Arena& permanent_arena);
     void recreate_swap_chain(Arena& temp_arena, Arena& permanent_arena);
+    SwapChain& get_swap_chain();
 };
 
 }

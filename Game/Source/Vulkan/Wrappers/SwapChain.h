@@ -37,6 +37,7 @@ public:
     void create_frame_buffers(VkRenderPass render_pass);
     size_t get_image_views_count() const;
     const ArrayRef<VkImageView>& get_image_views() const;
+    uint32_t get_image_count() const;
 
     VkExtent2D get_swap_chain_extent() const;
     VkFormat get_swap_chain_format() const;

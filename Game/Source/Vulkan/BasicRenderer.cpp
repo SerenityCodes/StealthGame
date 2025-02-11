@@ -3,6 +3,8 @@
 #include <cassert>
 #include <stdexcept>
 
+#include "common.h"
+
 namespace engine::vulkan {
 
 BasicRenderer::BasicRenderer(Arena& temp_arena, Arena& permanent_arena, Window* window, DeviceWrapper* device, VkSurfaceKHR surface) : m_window_(window), m_device_(device),
@@ -14,14 +16,14 @@ VkCommandPool BasicRenderer::get_command_pool() const {
 }
 
 VkCommandBuffer BasicRenderer::begin_frame(Arena& temp_arena, Arena& permanent_arena) {
-    assert(!m_is_frame_in_progress_ && "Cannot call begin_frame while another is in progress");
+    ENGINE_ASSERT(!m_is_frame_in_progress_, "Cannot call begin_frame while another is in progress")
     m_command_buffer_.wait_for_fence(m_current_frame_);
     if (auto res = vkAcquireNextImageKHR(*m_device_, *m_swap_chain_, UINT64_MAX, m_command_buffer_.get_image_available_semaphore(m_current_frame_), VK_NULL_HANDLE, &m_current_image_index_); res != VK_SUCCESS) {
         if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
             recreate_swap_chain(temp_arena, permanent_arena);
             return nullptr;
         }
-        throw std::runtime_error("failed to acquire swap chain image");
+        ENGINE_ASSERT(false, "Failed to acquire swap chain image")
     }
     m_is_frame_in_progress_ = true;
     m_command_buffer_.reset_fence(m_current_frame_);
@@ -31,18 +33,14 @@ VkCommandBuffer BasicRenderer::begin_frame(Arena& temp_arena, Arena& permanent_a
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(current_cmd_buffer, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to begin recording command buffer!");
-    }
+    ENGINE_ASSERT(vkBeginCommandBuffer(current_cmd_buffer, &begin_info) == VK_SUCCESS, "Failed to begin recording command buffer")
     return current_cmd_buffer;
 }
 
 void BasicRenderer::end_frame(Arena& temp_arena, Arena& permanent_arena) {
-    assert(m_is_frame_in_progress_ && "Can't end frame when there's no frame to end");
+    ENGINE_ASSERT(m_is_frame_in_progress_, "Can't end frame if there is no frame to end")
     VkCommandBuffer current_cmd_buffer = get_current_cmd_buffer();
-    if (vkEndCommandBuffer(current_cmd_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to record command buffer!");
-    }
+    ENGINE_ASSERT(vkEndCommandBuffer(current_cmd_buffer) == VK_SUCCESS, "Failed to end recording command buffer")
     m_command_buffer_.submit_command_buffer(m_current_frame_);
     if (m_command_buffer_.present_command_buffer(m_current_frame_, m_current_image_index_) || m_window_->was_resized()) {
         m_window_->toggle_resized();
@@ -53,15 +51,15 @@ void BasicRenderer::end_frame(Arena& temp_arena, Arena& permanent_arena) {
 }
 
 void BasicRenderer::begin_render_pass(VkCommandBuffer command_buffer) {
-    assert(m_is_frame_in_progress_ && "Can't end frame when there's no frame to end");
-    assert(command_buffer == get_current_cmd_buffer() && "Can't begin render pass on command buffer from a different frame");
+    ENGINE_ASSERT(m_is_frame_in_progress_, "Can't end frame when there's no frame to end")
+    ENGINE_ASSERT(command_buffer == get_current_cmd_buffer(), "Can't begin render pass on command buffer from a different frame")
     VkCommandBuffer current_cmd_buffer = m_command_buffer_.get_command_buffer(m_current_frame_);
     
     VkRenderPassBeginInfo render_pass_info{};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = m_swap_chain_->get_current_render_pass();
     render_pass_info.framebuffer = m_swap_chain_->get_frame_buffer(m_current_image_index_);
-    assert(render_pass_info.framebuffer != VK_NULL_HANDLE && "Framebuffer is invalid!");
+    ENGINE_ASSERT(render_pass_info.framebuffer != VK_NULL_HANDLE, "Framebuffer is invalid!")
     render_pass_info.renderArea = {{0, 0}, m_swap_chain_->get_swap_chain_extent()};
 
     VkClearValue clear_value = {{{0.1f, 0.1f, 0.1f, 1.0}}};
@@ -86,8 +84,8 @@ void BasicRenderer::begin_render_pass(VkCommandBuffer command_buffer) {
 }
 
 void BasicRenderer::end_render_pass(VkCommandBuffer command_buffer) const {
-    assert(m_is_frame_in_progress_ && "Can't end render pass when there's no frame to end");
-    assert(command_buffer == get_current_cmd_buffer() && "Can't end render pass on command buffer from a different frame");
+    ENGINE_ASSERT(m_is_frame_in_progress_, "Can't end render pass when there's no frame to end")
+    ENGINE_ASSERT(command_buffer == get_current_cmd_buffer(), "Can't end render pass on command buffer from a different frame")
     vkCmdEndRenderPass(command_buffer);
 }
 
@@ -125,6 +123,10 @@ ObjectHolder<SwapChain> BasicRenderer::initialize_swap_chain(Arena& temp_arena, 
 void BasicRenderer::recreate_swap_chain(Arena& temp_arena, Arena& permanent_arena) {
     vkDeviceWaitIdle(*m_device_);
     m_swap_chain_.emplace(m_swap_chain_->get_starting_stack_pos(), temp_arena, permanent_arena, m_window_->raw_window(), m_surface_, m_device_);
+}
+
+SwapChain& BasicRenderer::get_swap_chain() {
+    return *m_swap_chain_;
 }
 
 }

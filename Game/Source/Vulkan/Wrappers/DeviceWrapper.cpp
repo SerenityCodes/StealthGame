@@ -13,6 +13,7 @@
 #include "../Vendor/vma/include/vk_mem_alloc.h"
 
 #include "SwapChain.h"
+#include "common.h"
 
 namespace engine::vulkan {
 
@@ -52,9 +53,7 @@ bool is_swap_chain_good(Arena& temp_arena, VkSurfaceKHR surface, VkPhysicalDevic
 VkPhysicalDevice pick_physical_device(Arena& temp_arena, VkSurfaceKHR surface, VkInstance instance) {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
-    if (device_count == 0) {
-        throw std::runtime_error("No suitable GPUs available");
-    }
+    ENGINE_ASSERT(device_count > 0, "No GPUs found")
     VkPhysicalDevice* physical_devices_arr = static_cast<VkPhysicalDevice*>(temp_arena.push(sizeof(VkPhysicalDevice) * device_count));
     ArrayRef physical_devices(physical_devices_arr, static_cast<uint16_t>(device_count));
     vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
@@ -64,7 +63,7 @@ VkPhysicalDevice pick_physical_device(Arena& temp_arena, VkSurfaceKHR surface, V
         }
     }
     // Not supposed to make it here
-    throw std::runtime_error("failed to find suitable GPU!");
+    ENGINE_ASSERT(false, "Failed to find a GPU that works")
 }
 
 }
