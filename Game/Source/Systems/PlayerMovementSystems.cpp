@@ -65,7 +65,7 @@ void setup_keyboard_movement(flecs::world& world) {
         velocity.speed = move_speed;
         float delta_time = entity.world().delta_time();
         velocity.direction = move_dir * move_speed;
-        transform.translation += velocity.direction * delta_time;
+        transform.position += velocity.direction * delta_time;
         
         glm::vec3 rotate{0.f};
         rotate.x = static_cast<float>(movement.look_up);
@@ -75,6 +75,6 @@ void setup_keyboard_movement(flecs::world& world) {
         }
         
         Camera* camera = entity.world().get_mut<Camera>();
-        camera->set_view_yxz(transform.translation, transform.rotation);
+        camera->set_view_yxz(transform.position, transform.rotation);
     });
 }

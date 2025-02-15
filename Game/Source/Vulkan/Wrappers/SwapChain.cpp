@@ -3,6 +3,9 @@
 #include <stdexcept>
 #include <glm/common.hpp>
 
+#include "QueueWrapper.h"
+#include "common.h"
+
 namespace engine::vulkan {
 
 SwapChain::SwapChain(uint64_t* old_buffer,
@@ -10,9 +13,11 @@ SwapChain::SwapChain(uint64_t* old_buffer,
     Arena& permanent_arena,
     GLFWwindow* window,
     VkSurfaceKHR surface,
-    DeviceWrapper* device) :
+    VkDevice logical_device,
+    VkPhysicalDevice physical_device) :
         m_full_buffer_start_(old_buffer),
-        m_window_(window), m_device_(device), m_surface_(surface),
+        m_window_(window), m_logical_device_(logical_device), m_physical_device_(physical_device),
+        m_surface_(surface),
         m_swap_chain_(nullptr), m_render_pass_(nullptr) {
     create_swap_chain(temp_arena);
     create_swap_chain_images(permanent_arena);
@@ -29,19 +34,19 @@ SwapChain::~SwapChain() {
         glfwGetFramebufferSize(m_window_, &width, &height);
         glfwWaitEvents();
     }
-    vkDeviceWaitIdle(*m_device_);
-    vkDestroyRenderPass(*m_device_, m_render_pass_, nullptr);
+    vkDeviceWaitIdle(m_logical_device_);
+    vkDestroyRenderPass(m_logical_device_, m_render_pass_, nullptr);
     for (const auto& frame_buffer : m_frame_buffers_) {
-        vkDestroyFramebuffer(m_device_->get_logical_device(), frame_buffer, nullptr);
+        vkDestroyFramebuffer(m_logical_device_, frame_buffer, nullptr);
     }
     for (const auto& image_view : m_image_views_) {
-        vkDestroyImageView(m_device_->get_logical_device(), image_view, nullptr);
+        vkDestroyImageView(m_logical_device_, image_view, nullptr);
     }
-    vkDestroySwapchainKHR(m_device_->get_logical_device(), m_swap_chain_, nullptr);
+    vkDestroySwapchainKHR(m_logical_device_, m_swap_chain_, nullptr);
 }
 
 void SwapChain::create_swap_chain(Arena& temp_arena) {
-    SupportDetails support_details = create_support_details(temp_arena, m_surface_, m_device_->get_physical_device());
+    SupportDetails support_details = create_support_details(temp_arena, m_surface_, m_physical_device_);
     VkSurfaceFormatKHR surface_format = choose_swap_surface_format(support_details.formats);
     VkPresentModeKHR present_mode = choose_present_mode(support_details.present_modes);
     VkExtent2D swap_chain_extent = choose_extent(m_window_, support_details.capabilities);
@@ -61,7 +66,7 @@ void SwapChain::create_swap_chain(Arena& temp_arena) {
     swap_chain_create_info.imageArrayLayers = 1;
     swap_chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(temp_arena, m_surface_, m_device_->get_physical_device());
+    QueueWrapper::QueueFamily family = QueueWrapper::find_indices(temp_arena, m_surface_, m_physical_device_);
     uint32_t queue_family_indices[] = {family.graphics_family_index, family.present_family_index};
     if (queue_family_indices[0] == queue_family_indices[1]) {
         swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -77,7 +82,7 @@ void SwapChain::create_swap_chain(Arena& temp_arena) {
     swap_chain_create_info.clipped = VK_TRUE;
     swap_chain_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    if (auto res = vkCreateSwapchainKHR(*m_device_, &swap_chain_create_info, nullptr, &m_swap_chain_); res != VK_SUCCESS) {
+    if (auto res = vkCreateSwapchainKHR(m_logical_device_, &swap_chain_create_info, nullptr, &m_swap_chain_); res != VK_SUCCESS) {
         throw std::runtime_error("Failed to create swap chain!");
     }
     m_swap_chain_format_ = surface_format.format;
@@ -85,14 +90,14 @@ void SwapChain::create_swap_chain(Arena& temp_arena) {
 }
 
 void SwapChain::create_swap_chain_images(Arena& permanent_arena) {
-    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, nullptr);
+    vkGetSwapchainImagesKHR(m_logical_device_, m_swap_chain_, &m_image_count_, nullptr);
     if (m_full_buffer_start_ == nullptr) {
         size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * m_image_count_;
-        m_full_buffer_start_ = static_cast<uint64_t*>(permanent_arena.push(bytes_for_all_images));
+        m_full_buffer_start_ = static_cast<u64*>(permanent_arena.push(bytes_for_all_images));
     }
     VkImage* arr_ptr = reinterpret_cast<VkImage*>(m_full_buffer_start_);
     m_images_ = ArrayRef(arr_ptr, m_image_count_);
-    vkGetSwapchainImagesKHR(m_device_->get_logical_device(), m_swap_chain_, &m_image_count_, m_images_.data());
+    vkGetSwapchainImagesKHR(m_logical_device_, m_swap_chain_, &m_image_count_, m_images_.data());
 }
 
 void SwapChain::create_swap_chain_image_views() {
@@ -116,7 +121,7 @@ void SwapChain::create_swap_chain_image_views() {
         image_view_create_info.subresourceRange.baseArrayLayer = 0;
         image_view_create_info.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(m_device_->get_logical_device(), &image_view_create_info, nullptr, &m_image_views_[i]) != VK_SUCCESS) {
+        if (vkCreateImageView(m_logical_device_, &image_view_create_info, nullptr, &m_image_views_[i]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create swap chain image view!");
         }
     }
@@ -138,7 +143,7 @@ void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
         framebuffer_create_info.height = m_swap_chain_extent_.height;
         framebuffer_create_info.layers = 1;
 
-        if (vkCreateFramebuffer(*m_device_, &framebuffer_create_info, nullptr, &m_frame_buffers_[i]) != VK_SUCCESS) {
+        if (vkCreateFramebuffer(m_logical_device_, &framebuffer_create_info, nullptr, &m_frame_buffers_[i]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create framebuffer!");
         }
     }
@@ -202,7 +207,7 @@ VkRenderPass SwapChain::create_render_pass() const {
     render_pass_create_info.pDependencies = &dependency;
 
     VkRenderPass render_pass = VK_NULL_HANDLE;
-    if (vkCreateRenderPass(*m_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(m_logical_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create render pass!");
     }
     return render_pass;

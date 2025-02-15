@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "DeviceWrapper.h"
+
 #include "SurfaceWrapper.h"
 #include "Containers/ArrayRef.h"
 #include "Memory/Arena.h"
@@ -16,7 +16,8 @@ public:
 private:
     uint64_t* m_full_buffer_start_;
     GLFWwindow* m_window_;
-    DeviceWrapper* m_device_;
+    VkDevice m_logical_device_;
+    VkPhysicalDevice m_physical_device_;
     VkSurfaceKHR m_surface_;
     VkSwapchainKHR m_swap_chain_;
     VkRenderPass m_render_pass_;
@@ -28,7 +29,7 @@ private:
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
-    SwapChain(uint64_t* old_buffer, Arena& temp_arena, Arena& permanent_arena, GLFWwindow* window, VkSurfaceKHR surface, DeviceWrapper* device);
+    SwapChain(uint64_t* old_buffer, Arena& temp_arena, Arena& permanent_arena, GLFWwindow* window, VkSurfaceKHR surface, VkDevice device, VkPhysicalDevice physical_device);
     ~SwapChain();
 
     void create_swap_chain(Arena& temp_arena);

@@ -6,7 +6,7 @@
 namespace components {
 
 struct Transform3D {
-    glm::vec3 translation{};
+    glm::vec3 position{};
     glm::vec3 rotation{0, 0, 0};
     glm::vec3 scale{};
 
@@ -37,7 +37,7 @@ struct Transform3D {
                 scale.z * (c1 * c2),
                 0.0f,
             },
-            {translation.x, translation.y, translation.z, 1.0f}
+            {position.x, position.y, position.z, 1.0f}
         };
     }
 

@@ -14,7 +14,6 @@ shaderdir = outputdir .. "/shaders"
 group "Dependencies"
     include "Game/Vendor/glfw"
     include "Game/Vendor/assimp"
-    include "Game/Vendor/imgui-premake"
 group ""
 
 include "Dependencies.lua"

@@ -20,12 +20,10 @@ void VulkanTexture::create_texture_image_view(VkFormat format) {
     view_info.subresourceRange.baseArrayLayer = 0;
     view_info.subresourceRange.layerCount = 1;
 
-    if (vkCreateImageView(*m_device_wrapper_, &view_info, nullptr, &m_image_view_)) {
-        throw std::runtime_error("Failed to create texture image view");
-    }
+    VULKAN_ASSERT(vkCreateImageView(m_device_, &view_info, nullptr, &m_image_view_), "Failed to create image view!")
 }
 
-void VulkanTexture::create_texture_sampler() {
+void VulkanTexture::create_texture_sampler(VulkanRenderer& renderer) {
     VkSamplerCreateInfo sampler_info{};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sampler_info.magFilter = VK_FILTER_LINEAR;
@@ -36,7 +34,7 @@ void VulkanTexture::create_texture_sampler() {
     sampler_info.anisotropyEnable = VK_TRUE;
 
     VkPhysicalDeviceProperties properties{};
-    vkGetPhysicalDeviceProperties(m_device_wrapper_->get_physical_device(), &properties);
+    vkGetPhysicalDeviceProperties(renderer.vulkan_physical_device(), &properties);
     sampler_info.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
     
     sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
@@ -49,28 +47,23 @@ void VulkanTexture::create_texture_sampler() {
     sampler_info.maxLod = 0.0f;
     sampler_info.mipLodBias = 0.0f;
 
-    if (vkCreateSampler(*m_device_wrapper_, &sampler_info, nullptr, &m_sampler_)) {
-        throw std::runtime_error("Failed to create texture sampler");
-    }
+    VULKAN_ASSERT(vkCreateSampler(m_device_, &sampler_info, nullptr, &m_sampler_), "Failed to create image sampler")
 }
 
-VulkanTexture::VulkanTexture(DeviceWrapper& device, VkCommandPool command_pool, const char* file_path) {
-    m_device_wrapper_ = &device;
+VulkanTexture::VulkanTexture(VulkanRenderer& renderer, const char* file_path) : m_device_(renderer.vulkan_device()), m_allocator_(renderer.vma_allocator()) {
     stbi_uc* pixels = stbi_load(file_path, &m_width_, &m_height_, &m_channels_, STBI_rgb_alpha);
     VkDeviceSize size = m_width_ * m_height_;
 
-    if (!pixels) {
-        throw std::runtime_error("Failed to load texture!");
-    }
+    ENGINE_ASSERT(pixels, "Failed to load texture!")
     
-    m_buffer_ = DeviceBufferWrapper{&device, sizeof(int), static_cast<uint32_t>(size), VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT};
-    DeviceBufferWrapper staging_buffer{&device,
+    m_buffer_ = DeviceBufferWrapper{renderer, sizeof(int), static_cast<uint32_t>(size), VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT};
+    DeviceBufferWrapper staging_buffer{renderer,
         sizeof(int),
         static_cast<uint32_t>(size),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT};
     staging_buffer.write_to_buffer(pixels);
-    device.copy_buffer(command_pool, staging_buffer.buffer(), m_buffer_.buffer(), size);
+    renderer.copy_buffer(staging_buffer.buffer(), m_buffer_.buffer(), size);
     stbi_image_free(pixels);
 
     VkImageCreateInfo image_create_info;
@@ -94,27 +87,25 @@ VulkanTexture::VulkanTexture(DeviceWrapper& device, VkCommandPool command_pool, 
     vma_create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
     vma_create_info.priority = 1.0f;
     
-    if (vmaCreateImage(device.get_allocator(), &image_create_info, &vma_create_info, &m_image_, &m_allocation_, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create image!");
-    }
+    VULKAN_ASSERT(vmaCreateImage(renderer.vma_allocator(), &image_create_info, &vma_create_info, &m_image_, &m_allocation_, nullptr), "Failed to create image")
 
-    transition_image_layout(command_pool, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copy_buffer_to_image(command_pool, m_buffer_, m_width_, m_height_);
+    transition_image_layout(renderer, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copy_buffer_to_image(renderer, m_buffer_, m_width_, m_height_);
 }
 
 VulkanTexture::~VulkanTexture() {
-    vkDestroySampler(*m_device_wrapper_, m_sampler_, nullptr);
-    vkDestroyImageView(*m_device_wrapper_, m_image_view_, nullptr);
-    vmaFreeMemory(m_device_wrapper_->get_allocator(), m_allocation_);
+    vkDestroySampler(m_device_, m_sampler_, nullptr);
+    vkDestroyImageView(m_device_, m_image_view_, nullptr);
+    vmaFreeMemory(m_allocator_, m_allocation_);
 }
 
 VkImage VulkanTexture::get_image() const {
     return m_image_;
 }
 
-void VulkanTexture::transition_image_layout(VkCommandPool command_pool,
+void VulkanTexture::transition_image_layout(VulkanRenderer& renderer,
     VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout) const {
-    VkCommandBuffer command_buffer = m_device_wrapper_->get_one_time_command_buffer(command_pool);
+    VkCommandBuffer command_buffer = renderer.get_one_time_cmd_buffer();
 
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -157,12 +148,12 @@ void VulkanTexture::transition_image_layout(VkCommandPool command_pool,
         nullptr,
         1,
         &barrier);
-    
-    m_device_wrapper_->end_one_time_command_buffer(command_pool, command_buffer);
+
+    renderer.end_one_time_cmd_buffer(command_buffer);
 }
 
-void VulkanTexture::copy_buffer_to_image(VkCommandPool command_pool, DeviceBufferWrapper& buffer, u32 width, u32 height) const {
-    VkCommandBuffer command_buffer = m_device_wrapper_->get_one_time_command_buffer(command_pool);
+void VulkanTexture::copy_buffer_to_image(VulkanRenderer& renderer, DeviceBufferWrapper& buffer, u32 width, u32 height) const {
+    VkCommandBuffer command_buffer = renderer.get_one_time_cmd_buffer();
 
     VkBufferImageCopy copy_region;
     copy_region.bufferOffset = 0;
@@ -179,7 +170,7 @@ void VulkanTexture::copy_buffer_to_image(VkCommandPool command_pool, DeviceBuffe
 
     vkCmdCopyBufferToImage(command_buffer, buffer.buffer(), m_image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
     
-    m_device_wrapper_->end_one_time_command_buffer(command_pool, command_buffer);
+    renderer.end_one_time_cmd_buffer(command_buffer);
 }
 
 }

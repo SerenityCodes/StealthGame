@@ -1,10 +1,16 @@
 ﻿#pragma once
-#include "DeviceWrapper.h"
+
+#include <vk_mem_alloc.h>
+
+#include "Vulkan/VulkanRenderer.h"
 
 namespace engine::vulkan {
 
+class VulkanRenderer;
+
 class DeviceBufferWrapper {
-    DeviceWrapper* m_device_wrapper_;
+    VkDevice m_device_;
+    VmaAllocator m_allocator_ = VK_NULL_HANDLE;
     void* m_mapped_memory_ = nullptr;
     VkBuffer m_buffer_ = VK_NULL_HANDLE;
     VmaAllocation m_allocation_ = VK_NULL_HANDLE;
@@ -16,7 +22,7 @@ class DeviceBufferWrapper {
     static VkDeviceSize aligned_size(VkDeviceSize size, VkDeviceSize alignment);
 public:
     DeviceBufferWrapper() = default;
-    DeviceBufferWrapper(DeviceWrapper* device_wrapper, VkDeviceSize instance_size, uint32_t instance_count, VkBufferUsageFlags flags, VmaAllocationCreateFlags allocation_flags, VkDeviceSize min_offset_alignment = 1);
+    DeviceBufferWrapper(const VulkanRenderer& renderer, VkDeviceSize instance_size, uint32_t instance_count, VkBufferUsageFlags flags, VmaAllocationCreateFlags allocation_flags, VkDeviceSize min_offset_alignment = (u64) 1);
     DeviceBufferWrapper(const DeviceBufferWrapper&) = delete;
     DeviceBufferWrapper& operator=(const DeviceBufferWrapper&) = delete;
     DeviceBufferWrapper(DeviceBufferWrapper&& other) noexcept;

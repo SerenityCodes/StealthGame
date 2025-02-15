@@ -2,9 +2,12 @@
 
 #include <cstdint>
 #include <memory>
+
+#include "common.h"
+
 template <typename T>
 class ObjectHolder {
-    alignas(T) uint8_t m_data_[sizeof(T)]{};
+    alignas(T) u8 m_data_[sizeof(T)]{};
     bool m_initialized_{false};
 public:
     ObjectHolder() = default;

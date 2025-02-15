@@ -5,9 +5,8 @@
 #include <glm/vec3.hpp>
 
 #include "Containers/DynArray.h"
-#include "Wrappers/DeviceWrapper.h"
-#include <iostream>
 
+#include "common.h"
 #include "Wrappers/DeviceBufferWrapper.h"
 
 namespace engine::vulkan {
@@ -33,22 +32,22 @@ public:
         DynArray<Vertex> vertices;
         DynArray<uint32_t> indices;
 
-        void load_model(Arena& temp_arena, const char* base_model_path, uint32_t import_flags);
+        void load_model(Arena& temp_arena, const char* base_model_path, u32 import_flags = 0);
     };
     
 private:
-    DeviceWrapper* m_device_wrapper_;
+    VkDevice m_device_;
     size_t m_vertex_count_;
     size_t m_index_count_;
     DeviceBufferWrapper m_vertex_buffer_;
     DeviceBufferWrapper m_index_buffer_;
 
-    static void create_buffer_from_staging(DeviceWrapper* device_wrapper, VkCommandPool command_pool, VkDeviceSize size, VkBufferUsageFlags usage, void* data_to_copy, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
+    static void create_buffer_from_staging(VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, void* data_to_copy, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
 public:
-    VulkanModel(DeviceWrapper* device_wrapper, VkCommandPool command_pool, const VertexIndexInfo& vertices);
+    VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertices);
     ~VulkanModel() = default;
 
-    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path, uint32_t import_flags);
+    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const char* file_path);
 
     VulkanModel(const VulkanModel&) = delete;
     VulkanModel& operator=(const VulkanModel&) = delete;

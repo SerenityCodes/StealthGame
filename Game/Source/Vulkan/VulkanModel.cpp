@@ -4,12 +4,12 @@
 #include <fstream>
 
 #include "Memory/STLArenaAllocator.h"
-#include "assimp/Importer.hpp"
-#include "assimp/StringComparison.h"
-#include "assimp/Vertex.h"
-#include "assimp/postprocess.h"
-#include "assimp/scene.h"
 #include <filesystem>
+#include <assimp/Importer.hpp>
+
+#include "common.h"
+#include "assimp/mesh.h"
+#include "assimp/scene.h"
 
 namespace engine::vulkan {
 
@@ -22,8 +22,7 @@ get_binding_descriptions() {
     return binding_description;
 }
 
-std::array<VkVertexInputAttributeDescription, 4> VulkanModel::Vertex::
-get_attribute_descriptions() {
+std::array<VkVertexInputAttributeDescription, 4> VulkanModel::Vertex::get_attribute_descriptions() {
     VkVertexInputAttributeDescription position_attribute;
     position_attribute.binding = 0;
     position_attribute.location = 0;
@@ -115,7 +114,7 @@ void process_node(aiNode* node, const aiScene* scene, DynArray<VulkanModel::Vert
     }
 }
 
-void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* base_model_path, uint32_t import_flags) {
+void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* base_model_path, u32 import_flags) {
     using temp_string = std::basic_string<char, std::char_traits<char>, STLArenaAllocator<char>>;
     temp_string obj_path = base_model_path + temp_string{".obj", STLArenaAllocator<char>{&temp_arena}};
     temp_string processed_path = base_model_path + temp_string{".processed", STLArenaAllocator<char>{&temp_arena}};
@@ -124,10 +123,7 @@ void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* bas
         Assimp::Importer importer;
 
         const aiScene* scene = importer.ReadFile(obj_path.c_str(), import_flags);
-        if (!scene) {
-            std::cerr << "Failed to load model\n";
-            return;
-        }
+        ENGINE_ASSERT(scene, "Failed to load model", 10, 20, 30)
         vertices.clear();
         indices.clear();
     
@@ -173,37 +169,36 @@ void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* bas
     }
 }
 
-VulkanModel::VulkanModel(DeviceWrapper* device_wrapper,
-                         VkCommandPool command_pool, const VertexIndexInfo& vertices) : m_device_wrapper_(device_wrapper),
-    m_vertex_buffer_(device_wrapper, sizeof(Vertex), static_cast<uint32_t>(vertices.vertices.size()), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0),
-    m_index_buffer_(device_wrapper, sizeof(uint32_t), static_cast<uint32_t>(vertices.indices.size()), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0) {
+VulkanModel::VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertices) : m_device_(renderer.vulkan_device()),
+    m_vertex_buffer_(renderer, sizeof(Vertex), static_cast<uint32_t>(vertices.vertices.size()), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0),
+    m_index_buffer_(renderer, sizeof(uint32_t), static_cast<uint32_t>(vertices.indices.size()), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0) {
     m_vertex_count_ = vertices.vertices.size();
     m_index_count_ = vertices.indices.size();
     assert(m_vertex_count_ > 3 && "Vertex count must be greater than 3");
     uint32_t tiny_vertex_count = static_cast<uint32_t>(vertices.vertices.size());
     uint32_t tiny_index_count = static_cast<uint32_t>(vertices.indices.size());
     
-    DeviceBufferWrapper vertex_staging_buffer{device_wrapper,
+    DeviceBufferWrapper vertex_staging_buffer{renderer,
         sizeof(Vertex),
         tiny_vertex_count,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT};
     vertex_staging_buffer.write_to_buffer(vertices.vertices.data());
-    device_wrapper->copy_buffer(command_pool, vertex_staging_buffer.buffer(), m_vertex_buffer_.buffer(), sizeof(Vertex) * tiny_vertex_count);
+    renderer.copy_buffer(vertex_staging_buffer.buffer(), m_vertex_buffer_.buffer(), sizeof(Vertex) * tiny_vertex_count);
 
-    DeviceBufferWrapper index_staging_buffer{device_wrapper,
+    DeviceBufferWrapper index_staging_buffer{renderer,
     sizeof(uint32_t),
     tiny_index_count,
     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT};
     index_staging_buffer.write_to_buffer(vertices.indices.data());
-    device_wrapper->copy_buffer(command_pool, index_staging_buffer.buffer(), m_index_buffer_.buffer(), sizeof(uint32_t) * tiny_index_count);
+    renderer.copy_buffer(index_staging_buffer.buffer(), m_index_buffer_.buffer(), sizeof(uint32_t) * tiny_index_count);
 }
 
-VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, DeviceWrapper* device_wrapper, VkCommandPool command_pool, const char* file_path, uint32_t import_flags) {
+VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const char* file_path) {
     VertexIndexInfo vertex_index_info{model_arena};
-    vertex_index_info.load_model(temp_arena, file_path, import_flags);
-    return {device_wrapper, command_pool, vertex_index_info};
+    vertex_index_info.load_model(temp_arena, file_path);
+    return vulkan::VulkanModel{renderer, vertex_index_info};
 }
 
 void VulkanModel::bind(VkCommandBuffer command_buffer) const {

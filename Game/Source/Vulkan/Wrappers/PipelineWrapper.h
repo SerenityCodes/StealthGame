@@ -2,11 +2,10 @@
 
 #include <glm/glm.hpp>
 
-#include "DeviceWrapper.h"
 #include "SwapChain.h"
 #include "common.h"
-#include "Vulkan/BasicRenderer.h"
 #include "Vulkan/VulkanModel.h"
+#include "Vulkan/VulkanRenderer.h"
 
 namespace engine::vulkan {
 
@@ -19,13 +18,13 @@ public:
         glm::mat4 normal;
     };
 private:
-    DeviceWrapper* m_device_;
+    VkDevice m_device_;
     VkShaderModule m_vertex_shader_;
     VkShaderModule m_fragment_shader_;
     VkPipelineLayout m_pipeline_layout_;
     VkPipeline m_pipeline_;
 public:
-    PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, DeviceWrapper* device);
+    PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer);
     ~PipelineWrapper();
     
     VkPipelineLayout get_pipeline_layout() const;

@@ -8,12 +8,11 @@
 namespace engine::vulkan {
 
 
-PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, DeviceWrapper* device) : m_device_(device),
-    m_pipeline_layout_(nullptr), m_pipeline_(nullptr) {
+PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : m_device_(renderer.vulkan_device()) {
     ArrayRef<byte> vertex_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.vert.spv");
     ArrayRef<byte> fragment_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.frag.spv");
-    m_vertex_shader_ = create_shader_module(*device, vertex_shader_source);
-    m_fragment_shader_ = create_shader_module(*device, fragment_shader_source);
+    m_vertex_shader_ = create_shader_module(renderer.vulkan_device(), vertex_shader_source);
+    m_fragment_shader_ = create_shader_module(renderer.vulkan_device(), fragment_shader_source);
 
     VkPipelineShaderStageCreateInfo vertex_shader_create_info{};
     vertex_shader_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -51,14 +50,14 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, Dev
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(renderer->get_swap_chain_extent().width);
-    viewport.height = static_cast<float>(renderer->get_swap_chain_extent().height);
+    viewport.width = static_cast<float>(renderer.get_swap_chain_extent().width);
+    viewport.height = static_cast<float>(renderer.get_swap_chain_extent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = renderer->get_swap_chain_extent();
+    scissor.extent = renderer.get_swap_chain_extent();
 
     VkPipelineViewportStateCreateInfo viewport_state_create_info{};
     viewport_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -121,9 +120,7 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, Dev
     pipeline_layout_create_info.pushConstantRangeCount = 1;
     pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
 
-    if (vkCreatePipelineLayout(*m_device_, &pipeline_layout_create_info, nullptr, &m_pipeline_layout_) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create pipeline layout!");
-    }
+    VULKAN_ASSERT(vkCreatePipelineLayout(renderer.vulkan_device(), &pipeline_layout_create_info, nullptr, &m_pipeline_layout_), "Failed to create pipeline layout!")
 
     VkGraphicsPipelineCreateInfo pipeline_create_info{};
     pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -139,23 +136,21 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, BasicRenderer* renderer, Dev
     pipeline_create_info.pDynamicState = &dynamic_state_create_info;
     pipeline_create_info.pDepthStencilState = nullptr;
     pipeline_create_info.layout = m_pipeline_layout_;
-    pipeline_create_info.renderPass = renderer->get_render_pass();
+    pipeline_create_info.renderPass = renderer.render_pass();
     pipeline_create_info.subpass = 0;
     
     pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_create_info.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(*m_device_, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create pipeline!");
-    }
+    VULKAN_ASSERT(vkCreateGraphicsPipelines(renderer.vulkan_device(), VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_), "Failed to create pipeline!")
 }
 
 PipelineWrapper::~PipelineWrapper() {
-    vkDeviceWaitIdle(*m_device_);
-    vkDestroyShaderModule(*m_device_, m_vertex_shader_, nullptr);
-    vkDestroyShaderModule(*m_device_, m_fragment_shader_, nullptr);
-    vkDestroyPipelineLayout(*m_device_, m_pipeline_layout_, nullptr);
-    vkDestroyPipeline(*m_device_, m_pipeline_, nullptr);
+    vkDeviceWaitIdle(m_device_);
+    vkDestroyShaderModule(m_device_, m_vertex_shader_, nullptr);
+    vkDestroyShaderModule(m_device_, m_fragment_shader_, nullptr);
+    vkDestroyPipelineLayout(m_device_, m_pipeline_layout_, nullptr);
+    vkDestroyPipeline(m_device_, m_pipeline_, nullptr);
 }
 
 VkPipelineLayout PipelineWrapper::get_pipeline_layout() const {
@@ -182,12 +177,10 @@ VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, cons
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<uint32_t*>(code.data());
+    create_info.pCode = reinterpret_cast<u32*>(code.data());
 
     VkShaderModule shader_module = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create shader module!");
-    }
+    VULKAN_ASSERT(vkCreateShaderModule(device, &create_info, nullptr, &shader_module), "Failed to create shader module!")
     return shader_module;
 }
 

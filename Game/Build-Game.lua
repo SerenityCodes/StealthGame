@@ -14,7 +14,10 @@ project "Game"
     "Source/App.cpp", "Source/common.h", "Source/Engine*",
     "Vendor/flecs/**.h", "Vendor/flecs/**.c",
     "Vendor/spdlog/include/**.h", "Vendor/spdlog/src/**.cpp",
-    "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp"}
+    "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp",
+    "Vendor/glm/**.hpp", "Vendor/glm/**.h",
+    "Vendor/imgui/**.h", "Vendor/imgui/**.cpp",
+    "Vendor/vma/include/**.h"}
 
    defines
    {
@@ -32,15 +35,15 @@ project "Game"
 	  vulkanSDKPath .. "/Include",
       "Vendor/glfw/include",
       "Vendor/glm/glm",
-      "Vendor/assimp/include",
-      "Vendor/imgui-premake",
+      "Vendor/imgui",
       "Vendor/vma/include",
-      "Vendor/spdlog/include"
+      "Vendor/spdlog/include",
+      "Vendor/assimp/include"
    }
 
    links
    {
-      vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp", "imgui"
+      vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
@@ -51,7 +54,7 @@ project "Game"
        defines { "WINDOWS" }
 
    filter "toolset:msc*"
-       buildoptions { "/utf-8" }
+       buildoptions { "/utf-8", "/FS" }
 
    filter "configurations:Debug"
        defines { "DEBUG" }
