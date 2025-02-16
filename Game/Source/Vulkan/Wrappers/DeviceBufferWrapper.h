@@ -22,7 +22,7 @@ class DeviceBufferWrapper {
     static VkDeviceSize aligned_size(VkDeviceSize size, VkDeviceSize alignment);
 public:
     DeviceBufferWrapper() = default;
-    DeviceBufferWrapper(const VulkanRenderer& renderer, VkDeviceSize instance_size, uint32_t instance_count, VkBufferUsageFlags flags, VmaAllocationCreateFlags allocation_flags, VkDeviceSize min_offset_alignment = (u64) 1);
+    DeviceBufferWrapper(const VulkanRenderer& renderer, VkDeviceSize instance_size, uint32_t instance_count, VkBufferUsageFlags flags, VmaAllocationCreateFlags allocation_flags, VkDeviceSize min_offset_alignment = 1);
     DeviceBufferWrapper(const DeviceBufferWrapper&) = delete;
     DeviceBufferWrapper& operator=(const DeviceBufferWrapper&) = delete;
     DeviceBufferWrapper(DeviceBufferWrapper&& other) noexcept;

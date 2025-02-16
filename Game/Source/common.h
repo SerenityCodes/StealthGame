@@ -20,7 +20,7 @@ using f64 = double;
     __debugbreak();\
     }
 #else
-#define CHECK_VULKAN_ERROR_V(x, format_msg, ...) if ((x) != VK_SUCCESS) {\
+#define VULKAN_ASSERT(x, format_msg, ...) if ((x) != VK_SUCCESS) {\
     ENGINE_LOG_ERROR(format_msg __VA_OPT__(,) __VA_ARGS__) \
     assert(false);}
 #endif

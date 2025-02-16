@@ -40,12 +40,11 @@ void Window::toggle_resized() {
     m_was_resized_ = !m_was_resized_;
 }
 
-bool Window::was_resized() {
+bool Window::was_resized() const {
     return m_was_resized_;
 }
 
-void Window::frame_buffer_size_callback(GLFWwindow* window, int width,
-                                        int height) {
+void Window::frame_buffer_size_callback(GLFWwindow* window, int width, int height) {
     auto window_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
     window_ptr->set_resized();
 }

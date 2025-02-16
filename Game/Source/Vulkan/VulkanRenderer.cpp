@@ -279,9 +279,7 @@ VkCommandBuffer VulkanRenderer::begin_frame(Arena& temp_arena) {
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(current_cmd_buffer, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to begin recording command buffer!");
-    }
+    VULKAN_ASSERT(vkBeginCommandBuffer(current_cmd_buffer, &begin_info), "Failed to begin command buffer!")
     
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();

@@ -1,8 +1,11 @@
 ﻿#pragma once
 
-#include "SurfaceWrapper.h"
 #include "Containers/ArrayRef.h"
 #include "Memory/Arena.h"
+
+#include <vulkan/vulkan.h>
+
+#include "Window.h"
 
 namespace engine::vulkan {
 
