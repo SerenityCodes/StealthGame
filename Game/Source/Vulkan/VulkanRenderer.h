@@ -30,6 +30,11 @@ public:
             return graphics_family_index == present_family_index;
         }
     };
+
+    enum RenderPassType : u8 {
+        DEFAULT,
+        IMGUI
+    };
 private:
     Window m_window_;
     VkInstance m_instance_;
@@ -46,9 +51,7 @@ private:
     VmaAllocator m_allocator_;
     
     ObjectHolder<SwapChain> m_swap_chain_;
-
-    VkDescriptorPool m_descriptor_pool_;
-
+    
     VkCommandPool m_command_pool_;
     VkCommandBuffer m_primary_command_buffers_[MAX_FRAMES_IN_FLIGHT]{};
     VkSemaphore m_image_available_semaphores_[MAX_FRAMES_IN_FLIGHT]{};
@@ -67,12 +70,13 @@ private:
 public:
     VulkanRenderer(int height, int width, Arena& temp_arena, Arena& permanent_arena);
     ~VulkanRenderer();
-    
+
+    void render_imgui(Arena& temp_arena);
     VkCommandBuffer begin_frame(Arena& temp_arena);
     void end_frame(Arena& temp_arena);
-    void begin_render_pass(VkCommandBuffer command_buffer);
+    void begin_render_pass(VkCommandBuffer command_buffer, RenderPassType render_pass);
     static void end_render_pass(VkCommandBuffer command_buffer);
-
+    
     void bind_pipeline(VkPipeline pipeline) const;
 
     VkCommandBuffer get_one_time_cmd_buffer() const;

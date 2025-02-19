@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Window.h"
+#include "common.h"
 
 namespace engine::vulkan {
 
@@ -24,11 +25,14 @@ private:
     VkSurfaceKHR m_surface_;
     VkSwapchainKHR m_swap_chain_;
     VkRenderPass m_render_pass_;
+
+    VkRenderPass m_imgui_render_pass_;
     
     uint32_t m_image_count_;
     ArrayRef<VkImage> m_images_;
     ArrayRef<VkImageView> m_image_views_;
     ArrayRef<VkFramebuffer> m_frame_buffers_;
+    ArrayRef<VkFramebuffer> m_imgui_frame_buffers_;
     VkFormat m_swap_chain_format_;
     VkExtent2D m_swap_chain_extent_;
 public:
@@ -38,14 +42,19 @@ public:
     void create_swap_chain(Arena& temp_arena);
     void create_swap_chain_images(Arena& permanent_arena);
     void create_swap_chain_image_views();
-    void create_frame_buffers(VkRenderPass render_pass);
+    void create_frame_buffers(VkRenderPass render_pass, ArrayRef<VkFramebuffer>& frame_buffers, bool is_second);
     size_t get_image_views_count() const;
     const ArrayRef<VkImageView>& get_image_views() const;
 
     VkExtent2D get_swap_chain_extent() const;
     VkFormat get_swap_chain_format() const;
-    VkFramebuffer get_frame_buffer(uint32_t index) const;
+    VkFramebuffer get_frame_buffer(u32 index) const;
 
+    VkFramebuffer get_imgui_frame_buffer(u32 index) const;
+
+    void create_imgui_pass();
+    VkRenderPass get_imgui_pass() const;
+    
     VkRenderPass create_render_pass() const;
     VkRenderPass get_current_render_pass() const;
 

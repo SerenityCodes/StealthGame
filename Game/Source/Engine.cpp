@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "common.h"
+#include "imgui.h"
 #include "Systems/CoreEngineSystems.h"
 #include "Vulkan/VulkanRenderInfo.h"
 #include "Logging/Logger.h"
@@ -50,7 +51,7 @@ void StealthEngine::run() {
         m_renderer_.poll();
         m_temp_arena_.clear();
         if (const auto cmd_buffer = m_renderer_.begin_frame(m_temp_arena_)) {
-            m_renderer_.begin_render_pass(cmd_buffer);
+            m_renderer_.begin_render_pass(cmd_buffer, vulkan::VulkanRenderer::DEFAULT);
             m_renderer_.bind_pipeline(m_pipeline_.get_pipeline());
             VulkanRenderInfo* render_info = m_world_.get_mut<VulkanRenderInfo>();
             render_info->cmd_buffer = cmd_buffer;
@@ -90,10 +91,7 @@ ArrayRef<byte> StealthEngine::read_temporary_file(Arena& temp_arena, const Strin
 
 ArrayRef<byte> StealthEngine::read_temporary_file(Arena& temp_arena, const char* file_name) {
     std::ifstream file(file_name, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file " << file_name << "\n" << std::flush;
-        throw std::runtime_error("Failed to open file");
-    }
+    ENGINE_ASSERT(file.is_open(), "Failed to open file {}", file_name)
     file.seekg(0, std::ios::end);
     const std::streamsize file_size = file.tellg();
     file.seekg(0, std::ios::beg);

@@ -92,6 +92,7 @@ void VulkanRenderer::reset_command_buffer() {
 }
 
 void VulkanRenderer::recreate_swap_chain(Arena& temp_arena) {
+    ENGINE_LOG_INFO("Recreating swap chain...")
     vkDeviceWaitIdle(m_logical_device_);
     // Won't use permanent arena again, so passing in temp_arena for permanent_arena works just fine here
     m_swap_chain_.emplace(m_swap_chain_->get_starting_stack_pos(), temp_arena, temp_arena, m_window_.raw_window(), m_surface_, m_logical_device_, m_physical_device_);
@@ -181,7 +182,6 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     }
     pool_info.poolSizeCount = 1;
     pool_info.pPoolSizes = descriptor_pool_sizes;
-    VULKAN_ASSERT(vkCreateDescriptorPool(m_logical_device_, &pool_info, nullptr, &m_descriptor_pool_), "Failed to create descriptor pool")
     
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -201,8 +201,8 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     init_info.QueueFamily = m_graphics_queue_family_;
     init_info.Queue = m_graphics_queue_;
     init_info.PipelineCache = VK_NULL_HANDLE;
-    init_info.DescriptorPool = m_descriptor_pool_;
-    init_info.RenderPass = m_swap_chain_->get_current_render_pass();
+    init_info.DescriptorPoolSize = 2;
+    init_info.RenderPass = m_swap_chain_->get_imgui_pass();
     init_info.Subpass = 0;
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
@@ -238,22 +238,64 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
         VULKAN_ASSERT(vkCreateSemaphore(m_logical_device_, &semaphore_create_info, nullptr, &m_render_finished_semaphores_[i]), "Failed to create render semaphore {}", i)
         VULKAN_ASSERT(vkCreateFence(m_logical_device_, &fence_create_info, nullptr, &m_in_flight_fences_[i]), "Failed to create fence {}", i)
     }
+
+    ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    ImGui_ImplGlfw_Shutdown();
+    ImGui_ImplVulkan_Shutdown();
+    ImGui::DestroyContext();
     vkDeviceWaitIdle(m_logical_device_);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(m_logical_device_, m_in_flight_fences_[i], nullptr);
         vkDestroySemaphore(m_logical_device_, m_image_available_semaphores_[i], nullptr);
         vkDestroySemaphore(m_logical_device_, m_render_finished_semaphores_[i], nullptr);
     }
-    vkDestroyCommandPool(m_logical_device_, m_command_pool_, nullptr);
     m_swap_chain_.reset();
-    vkDestroyDescriptorPool(m_logical_device_, m_descriptor_pool_, nullptr);
     vmaDestroyAllocator(m_allocator_);
+    vkDestroyCommandPool(m_logical_device_, m_command_pool_, nullptr);
     vkDestroyDevice(m_logical_device_, nullptr);
     vkDestroySurfaceKHR(m_instance_, m_surface_, nullptr);
     vkDestroyInstance(m_instance_, nullptr);
+}
+
+void VulkanRenderer::render_imgui(Arena& temp_arena) {
+    VkCommandBuffer cmd_buffer = begin_frame(temp_arena);
+
+    VkRenderPassBeginInfo render_pass_info{};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    render_pass_info.renderPass = m_swap_chain_->get_imgui_pass();
+    render_pass_info.framebuffer = m_swap_chain_->get_imgui_frame_buffer(m_current_frame_);
+    render_pass_info.renderArea.extent = m_swap_chain_->get_swap_chain_extent();
+
+    VkClearValue clear_value = {{{0.1f, 0.1f, 0.1f, 1.0}}};
+    render_pass_info.clearValueCount = 1;
+    render_pass_info.pClearValues = &clear_value;
+    
+    vkCmdBeginRenderPass(cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    constexpr int swap_chain_images = 2;
+    ImGui_ImplVulkan_SetMinImageCount(swap_chain_images);
+
+    ImGui::Begin("Settings");
+    // Run UI code here
+    if (ImGui::Button("Test Button")) {
+        ENGINE_LOG_INFO("Button clicked!")
+    }
+    ImGui::End();
+
+    ImGui::ShowDemoWindow();
+    
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd_buffer);
+    ImGui::UpdatePlatformWindows();
+
+    end_render_pass(cmd_buffer);
+    end_frame(temp_arena);
 }
 
 VkCommandBuffer VulkanRenderer::begin_frame(Arena& temp_arena) {
@@ -280,10 +322,6 @@ VkCommandBuffer VulkanRenderer::begin_frame(Arena& temp_arena) {
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     VULKAN_ASSERT(vkBeginCommandBuffer(current_cmd_buffer, &begin_info), "Failed to begin command buffer!")
-    
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
 
     return current_cmd_buffer;
 }
@@ -292,12 +330,7 @@ void VulkanRenderer::end_frame(Arena& temp_arena) {
 #ifdef DEBUG
     ENGINE_ASSERT(m_is_frame_in_flight_, "There is no frame to end. Frame {} is to blame", m_current_frame_)
 #endif
-    // Render ImGUI as a seperate render pass
     VkCommandBuffer current_cmd_buffer = m_primary_command_buffers_[m_current_frame_];
-    ImGui::Render();
-    ImDrawData* draw_data = ImGui::GetDrawData();
-    ImGui_ImplVulkan_RenderDrawData(draw_data, current_cmd_buffer);
-    ImGui::UpdatePlatformWindows();
     VULKAN_ASSERT(vkEndCommandBuffer(current_cmd_buffer), "Failed to end command buffer")
 
     VkSubmitInfo submit_info{};
@@ -342,11 +375,11 @@ void VulkanRenderer::end_frame(Arena& temp_arena) {
     m_current_frame_ = (m_current_frame_ + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::begin_render_pass(VkCommandBuffer command_buffer) {
+void VulkanRenderer::begin_render_pass(VkCommandBuffer command_buffer, RenderPassType render_pass) {
     VkRenderPassBeginInfo render_pass_info{};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    render_pass_info.renderPass = m_swap_chain_->get_current_render_pass();
-    render_pass_info.framebuffer = m_swap_chain_->get_frame_buffer(m_image_index_);
+    render_pass_info.renderPass = render_pass == DEFAULT ? m_swap_chain_->get_current_render_pass() : m_swap_chain_->get_imgui_pass();
+    render_pass_info.framebuffer = render_pass == DEFAULT ? m_swap_chain_->get_frame_buffer(m_image_index_) : m_swap_chain_->get_imgui_frame_buffer(m_image_index_);
     ENGINE_ASSERT(render_pass_info.framebuffer != VK_NULL_HANDLE, "Framebuffer is invalid!")
     render_pass_info.renderArea = {{0, 0}, m_swap_chain_->get_swap_chain_extent()};
 

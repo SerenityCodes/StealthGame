@@ -5,6 +5,7 @@
 
 #include "QueueWrapper.h"
 #include "common.h"
+#include "imgui_impl_vulkan.h"
 
 namespace engine::vulkan {
 
@@ -23,8 +24,10 @@ SwapChain::SwapChain(uint64_t* old_buffer,
     create_swap_chain_images(permanent_arena);
     create_swap_chain_image_views();
     m_render_pass_ = create_render_pass();
-    create_frame_buffers(m_render_pass_);
-    assert(m_image_count_ == m_frame_buffers_.size() && "Frame buffer count mismatch!");
+    create_imgui_pass();
+    create_frame_buffers(m_render_pass_, m_frame_buffers_, false);
+    create_frame_buffers(m_imgui_render_pass_, m_imgui_frame_buffers_, true);
+    ENGINE_ASSERT(m_image_count_ == m_frame_buffers_.size(), "Frame buffer count mismatch!")
 }
 
 SwapChain::~SwapChain() {
@@ -35,13 +38,17 @@ SwapChain::~SwapChain() {
         glfwWaitEvents();
     }
     vkDeviceWaitIdle(m_logical_device_);
-    vkDestroyRenderPass(m_logical_device_, m_render_pass_, nullptr);
+    for (const auto& frame_buffer : m_imgui_frame_buffers_) {
+        vkDestroyFramebuffer(m_logical_device_, frame_buffer, nullptr);
+    }
     for (const auto& frame_buffer : m_frame_buffers_) {
         vkDestroyFramebuffer(m_logical_device_, frame_buffer, nullptr);
     }
     for (const auto& image_view : m_image_views_) {
         vkDestroyImageView(m_logical_device_, image_view, nullptr);
     }
+    vkDestroyRenderPass(m_logical_device_, m_render_pass_, nullptr);
+    vkDestroyRenderPass(m_logical_device_, m_imgui_render_pass_, nullptr);
     vkDestroySwapchainKHR(m_logical_device_, m_swap_chain_, nullptr);
 }
 
@@ -82,9 +89,7 @@ void SwapChain::create_swap_chain(Arena& temp_arena) {
     swap_chain_create_info.clipped = VK_TRUE;
     swap_chain_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    if (auto res = vkCreateSwapchainKHR(m_logical_device_, &swap_chain_create_info, nullptr, &m_swap_chain_); res != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create swap chain!");
-    }
+    VULKAN_ASSERT(vkCreateSwapchainKHR(m_logical_device_, &swap_chain_create_info, nullptr, &m_swap_chain_), "Failed to create swap chain!")
     m_swap_chain_format_ = surface_format.format;
     m_swap_chain_extent_ = swap_chain_extent;
 }
@@ -92,7 +97,7 @@ void SwapChain::create_swap_chain(Arena& temp_arena) {
 void SwapChain::create_swap_chain_images(Arena& permanent_arena) {
     vkGetSwapchainImagesKHR(m_logical_device_, m_swap_chain_, &m_image_count_, nullptr);
     if (m_full_buffer_start_ == nullptr) {
-        size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * m_image_count_;
+        size_t bytes_for_all_images = sizeof(VkImage) * m_image_count_ + sizeof(VkImageView) * m_image_count_ + sizeof(VkFramebuffer) * (m_image_count_ * 2);
         m_full_buffer_start_ = static_cast<u64*>(permanent_arena.push(bytes_for_all_images));
     }
     VkImage* arr_ptr = reinterpret_cast<VkImage*>(m_full_buffer_start_);
@@ -121,17 +126,16 @@ void SwapChain::create_swap_chain_image_views() {
         image_view_create_info.subresourceRange.baseArrayLayer = 0;
         image_view_create_info.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(m_logical_device_, &image_view_create_info, nullptr, &m_image_views_[i]) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create swap chain image view!");
-        }
+        VULKAN_ASSERT(vkCreateImageView(m_logical_device_, &image_view_create_info, nullptr, &m_image_views_[i]), "Failed to create image views!")
     }
 }
 
-void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
+void SwapChain::create_frame_buffers(VkRenderPass render_pass, ArrayRef<VkFramebuffer>& frame_buffers, bool is_second) {
     size_t buffer_offset = m_image_count_ * sizeof(VkImage) + sizeof(VkImageView) * m_image_count_;
-    auto arr_ptr = m_full_buffer_start_ + buffer_offset;
-    m_frame_buffers_ = ArrayRef(reinterpret_cast<VkFramebuffer*>(arr_ptr), m_image_count_);
-    for (uint32_t i = 0; i < m_frame_buffers_.size(); i++) {
+    buffer_offset += is_second ? sizeof(VkFramebuffer) * m_image_count_ : 0;
+    u64* arr_ptr = m_full_buffer_start_ + buffer_offset;
+    frame_buffers = ArrayRef{reinterpret_cast<VkFramebuffer*>(arr_ptr), m_image_count_};
+    for (uint32_t i = 0; i < m_image_count_; i++) {
         VkImageView attachments[] = {m_image_views_[i]};
         
         VkFramebufferCreateInfo framebuffer_create_info{};
@@ -143,9 +147,7 @@ void SwapChain::create_frame_buffers(VkRenderPass render_pass) {
         framebuffer_create_info.height = m_swap_chain_extent_.height;
         framebuffer_create_info.layers = 1;
 
-        if (vkCreateFramebuffer(m_logical_device_, &framebuffer_create_info, nullptr, &m_frame_buffers_[i]) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create framebuffer!");
-        }
+        VULKAN_ASSERT(vkCreateFramebuffer(m_logical_device_, &framebuffer_create_info, nullptr, &frame_buffers[i]), "Failed to create framebuffer!")
     }
 }
 
@@ -167,6 +169,53 @@ VkFormat SwapChain::get_swap_chain_format() const {
 
 VkFramebuffer SwapChain::get_frame_buffer(uint32_t index) const {
     return m_frame_buffers_[index];
+}
+
+VkFramebuffer SwapChain::get_imgui_frame_buffer(u32 index) const {
+    return m_imgui_frame_buffers_[index];
+}
+
+void SwapChain::create_imgui_pass() {
+    VkAttachmentDescription attachment{};
+    attachment.format = m_swap_chain_format_;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    
+    VkAttachmentReference color_attachment{};
+    color_attachment.attachment = 0;
+    color_attachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment;
+
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    info.attachmentCount = 1;
+    info.pAttachments = &attachment;
+    info.subpassCount = 1;
+    info.pSubpasses = &subpass;
+    info.dependencyCount = 1;
+    info.pDependencies = &dependency;
+    VULKAN_ASSERT(vkCreateRenderPass(m_logical_device_, &info, nullptr, &m_imgui_render_pass_), "Could not create Dear ImGui's render pass")
+}
+
+VkRenderPass SwapChain::get_imgui_pass() const {
+    return m_imgui_render_pass_;
 }
 
 VkRenderPass SwapChain::create_render_pass() const {
@@ -207,9 +256,7 @@ VkRenderPass SwapChain::create_render_pass() const {
     render_pass_create_info.pDependencies = &dependency;
 
     VkRenderPass render_pass = VK_NULL_HANDLE;
-    if (vkCreateRenderPass(m_logical_device_, &render_pass_create_info, nullptr, &render_pass) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create render pass!");
-    }
+    VULKAN_ASSERT(vkCreateRenderPass(m_logical_device_, &render_pass_create_info, nullptr, &render_pass), "Failed to create render pass!")
     return render_pass;
 }
 
@@ -225,8 +272,7 @@ SwapChain::operator VkSwapchainKHR() const {
     return m_swap_chain_;
 }
 
-VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
-    const ArrayRef<VkSurfaceFormatKHR>& available_formats) {
+VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(const ArrayRef<VkSurfaceFormatKHR>& available_formats) {
     for (const auto& available_format : available_formats) {
         if (available_format.format == VK_FORMAT_B8G8R8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             return available_format;
@@ -235,8 +281,7 @@ VkSurfaceFormatKHR SwapChain::choose_swap_surface_format(
     return available_formats[0];
 }
 
-VkPresentModeKHR SwapChain::choose_present_mode(
-    const ArrayRef<VkPresentModeKHR>& available_present_modes) {
+VkPresentModeKHR SwapChain::choose_present_mode(const ArrayRef<VkPresentModeKHR>& available_present_modes) {
     for (const auto& available_present_mode : available_present_modes) {
         if (available_present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             return available_present_mode;
@@ -263,9 +308,7 @@ VkExtent2D SwapChain::choose_extent(GLFWwindow* window, const VkSurfaceCapabilit
     return actual_extent;
 }
 
-SwapChain::SupportDetails SwapChain::create_support_details(
-    Arena& arena, VkSurfaceKHR surface,
-    VkPhysicalDevice physical_device) {
+SwapChain::SupportDetails SwapChain::create_support_details(Arena& arena, VkSurfaceKHR surface, VkPhysicalDevice physical_device) {
     VkSurfaceCapabilitiesKHR capabilities_khr;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities_khr);
     uint32_t format_count = 0;

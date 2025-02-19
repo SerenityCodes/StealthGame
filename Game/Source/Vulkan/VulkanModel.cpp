@@ -123,7 +123,7 @@ void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* bas
         Assimp::Importer importer;
 
         const aiScene* scene = importer.ReadFile(obj_path.c_str(), import_flags);
-        ENGINE_ASSERT(scene, "Failed to load model", 10, 20, 30)
+        ENGINE_ASSERT(scene, "Failed to load model")
         vertices.clear();
         indices.clear();
     
@@ -174,7 +174,7 @@ VulkanModel::VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertic
     m_index_buffer_(renderer, sizeof(uint32_t), static_cast<uint32_t>(vertices.indices.size()), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0) {
     m_vertex_count_ = vertices.vertices.size();
     m_index_count_ = vertices.indices.size();
-    assert(m_vertex_count_ > 3 && "Vertex count must be greater than 3");
+    ENGINE_ASSERT(m_vertex_count_ > 3, "Vertex count must be greater than 3")
     uint32_t tiny_vertex_count = static_cast<uint32_t>(vertices.vertices.size());
     uint32_t tiny_index_count = static_cast<uint32_t>(vertices.indices.size());
     
@@ -198,7 +198,7 @@ VulkanModel::VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertic
 VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const char* file_path) {
     VertexIndexInfo vertex_index_info{model_arena};
     vertex_index_info.load_model(temp_arena, file_path);
-    return vulkan::VulkanModel{renderer, vertex_index_info};
+    return VulkanModel{renderer, vertex_index_info};
 }
 
 void VulkanModel::bind(VkCommandBuffer command_buffer) const {

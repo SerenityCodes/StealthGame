@@ -2,6 +2,8 @@
 
 #include <glm/ext/matrix_clip_space.hpp>
 
+#include "common.h"
+
 Camera::Camera(float fov_y, float aspect, float near, float far) {
     set_perspective_projection(fov_y, aspect, near, far);
 }
@@ -17,9 +19,8 @@ void Camera::set_orthographic_projection(float left, float right, float top, flo
     projection[3][2] = -near / (far - near);
 }
 
-void Camera::set_perspective_projection(float fov_y, float aspect, float near,
-    float far) {
-    assert(glm::abs(aspect - glm::epsilon<float>()) > 0.0f);
+void Camera::set_perspective_projection(float fov_y, float aspect, float near, float far) {
+    ENGINE_ASSERT(glm::abs(aspect - glm::epsilon<float>()) > 0.0f, "Invalid aspect ratio")
     const float tan_half_fovy = tan(fov_y / 2.f);
     projection = glm::mat4{0.0f};
     projection[0][0] = 1.f / (aspect * tan_half_fovy);
