@@ -1,6 +1,5 @@
 #include "Engine.h"
 
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -59,6 +58,9 @@ void StealthEngine::run() {
             should_continue = m_world_.progress();
             vulkan::VulkanRenderer::end_render_pass(cmd_buffer);
             m_renderer_.end_frame(m_temp_arena_);
+#ifdef IMGUI_ENABLED
+            m_renderer_.render_imgui(m_temp_arena_);
+#endif
         }
     }
     // Join Threads Here

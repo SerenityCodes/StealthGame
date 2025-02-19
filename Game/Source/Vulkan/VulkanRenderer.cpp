@@ -182,7 +182,8 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     }
     pool_info.poolSizeCount = 1;
     pool_info.pPoolSizes = descriptor_pool_sizes;
-    
+
+#ifdef IMGUI_ENABLED
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -210,6 +211,7 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     init_info.Allocator = nullptr;
     init_info.CheckVkResultFn = check_vulkan_result_func;
     ImGui_ImplVulkan_Init(&init_info);
+#endif
 
     // Create command buffers
     VkCommandPoolCreateInfo command_pool_create_info{};
@@ -238,14 +240,17 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
         VULKAN_ASSERT(vkCreateSemaphore(m_logical_device_, &semaphore_create_info, nullptr, &m_render_finished_semaphores_[i]), "Failed to create render semaphore {}", i)
         VULKAN_ASSERT(vkCreateFence(m_logical_device_, &fence_create_info, nullptr, &m_in_flight_fences_[i]), "Failed to create fence {}", i)
     }
-
+#ifdef IMGUI_ENABLED
     ImGui_ImplVulkan_CreateFontsTexture();
+#endif
 }
 
 VulkanRenderer::~VulkanRenderer() {
+#ifdef IMGUI_ENABLED
     ImGui_ImplGlfw_Shutdown();
     ImGui_ImplVulkan_Shutdown();
     ImGui::DestroyContext();
+#endif
     vkDeviceWaitIdle(m_logical_device_);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(m_logical_device_, m_in_flight_fences_[i], nullptr);
