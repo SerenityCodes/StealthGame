@@ -1,33 +1,134 @@
 ﻿#include "PipelineWrapper.h"
 
-#include <stdexcept>
+#include <glslang/Public/ShaderLang.h>
+#include <glslang/SPIRV/GlslangToSpv.h>
+
+#include <iostream>
 
 #include "Engine.h"
+#include "spirv_reflect.h"
+#include "FileIO/FileIO.h"
 #include "Vulkan/VulkanModel.h"
 
 namespace engine::vulkan {
 
+DynArray<Shader> parse_and_compile_shaders(Arena& temp_arena, io::Folder& path) {
+    DynArray<glslang::TShader*> shaders{temp_arena};
+    DynArray<Shader> ret_shaders{temp_arena};
 
-PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : m_device_(renderer.vulkan_device()) {
-    ArrayRef<byte> vertex_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.vert.spv");
-    ArrayRef<byte> fragment_shader_source = StealthEngine::read_temporary_file(temp_arena, "Shaders/triangle.frag.spv");
-    m_vertex_shader_ = create_shader_module(renderer.vulkan_device(), vertex_shader_source);
-    m_fragment_shader_ = create_shader_module(renderer.vulkan_device(), fragment_shader_source);
+    EShMessages messages = EShMsgDefault;
+    
+    glslang::InitializeProcess();
+    glslang::TProgram program;
+    DynArray<io::RawFile> files = path.read_all_files();
+    for (int i = 0; i < static_cast<int>(files.size()); i++) {
+        io::RawFile& shader_file = files[i];
+        String extension = shader_file.get_file_extension();
+        String full_path = shader_file.get_file_path();
+        bool is_vertex = extension == ".vert";
+        bool is_fragment = extension == ".frag";
+        if (is_vertex && is_fragment) {
+            DynArray<byte> raw_code = shader_file.read_raw_bytes();
+            EShLanguage stage = is_vertex ? EShLangVertex : EShLangFragment;
+            glslang::TShader* shader = static_cast<glslang::TShader*>(temp_arena.push(sizeof(glslang::TShader)));
+            
+            const char* shader_code = reinterpret_cast<const char*>(raw_code.data());
+            shader->setStrings(&shader_code, i + 1);
+            TBuiltInResource resources{};
+            if (!shader->parse(&resources, 100, false, messages)) {
+                ENGINE_LOG_ERROR("Shader compilation failed for {}. Shader log: {}", full_path, shader->getInfoLog());
+                continue;
+            }
+            Shader shader_obj = load_shader(temp_arena, full_path, extension);
+            shaders.push_back(shader);
+            ret_shaders.push_back(shader_obj);
+            program.addShader(shader);
+        }
+    }
+    ENGINE_ASSERT(program.link(messages), "Shader program linking failed. Program log: {}", program.getInfoLog())
 
-    VkPipelineShaderStageCreateInfo vertex_shader_create_info{};
-    vertex_shader_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertex_shader_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertex_shader_create_info.module = m_vertex_shader_;
-    vertex_shader_create_info.pName = "main";
+    for (int i = 0; i < static_cast<int>(ret_shaders.size()); i++) {
+        glslang::TShader* shader = shaders[i];
+        glslang::TIntermediate* intermediate = shader->getIntermediate();
+        if (intermediate) {
+            Shader& shader_obj = ret_shaders[i];
+            GlslangToSpv(*intermediate, shader_obj.spirv_code);
+        }
+    }
+    glslang::FinalizeProcess();
+    return ret_shaders;
+}
 
-    VkPipelineShaderStageCreateInfo fragment_shader_create_info{};
-    fragment_shader_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragment_shader_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragment_shader_create_info.module = m_fragment_shader_;
-    fragment_shader_create_info.pName = "main";
+DynArray<VkDescriptorSetLayout> spirv_reflect_descriptor_pool(Arena& temp_arena, VkDevice device, const DynArray<Shader>& shaders) {
+    DynArray<VkDescriptorSetLayout> all_descriptor_sets(temp_arena);
+    for (const Shader& shader : shaders) {
+        SpvReflectShaderModule module;
+        SpvReflectResult result = spvReflectCreateShaderModule(shader.spirv_code.size(), shader.spirv_code.data(), &module);
+        ENGINE_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS, "Reflection failed")
 
-    VkPipelineShaderStageCreateInfo stages[] = {vertex_shader_create_info, fragment_shader_create_info};
+        u32 count = 0;
+        result = spvReflectEnumerateDescriptorSets(&module, &count, nullptr);
+        ENGINE_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS, "Descriptor set enumeration failed")
 
+        DynArray<SpvReflectDescriptorSet*> reflect_sets(temp_arena, count);
+        result = spvReflectEnumerateDescriptorSets(&module, &count, reflect_sets.data());
+        ENGINE_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS, "Descriptor set enumeration failed")
+
+        DynArray<PipelineWrapper::DescriptorSetLayoutData> descriptor_set_layouts(temp_arena, count);
+        for (u64 set_num = 0; set_num < count; set_num++) {
+            SpvReflectDescriptorSet& reflect_set = *reflect_sets[set_num];
+            PipelineWrapper::DescriptorSetLayoutData& layout_data = descriptor_set_layouts[set_num];
+            layout_data.bindings.resize(reflect_set.binding_count);
+            for (u32 binding = 0; binding < reflect_set.binding_count; binding++) {
+                SpvReflectDescriptorBinding& reflect_binding = *reflect_set.bindings[binding];
+                VkDescriptorSetLayoutBinding& layout_binding = layout_data.bindings[binding];
+                layout_binding.binding = reflect_binding.binding;
+                layout_binding.descriptorType = static_cast<VkDescriptorType>(reflect_binding.descriptor_type);
+                layout_binding.descriptorCount = 1;
+                for (u32 dim = 0; dim < reflect_binding.array.dims_count; dim++) {
+                    layout_binding.descriptorCount *= reflect_binding.array.dims[dim];
+                }
+                layout_binding.stageFlags = static_cast<VkShaderStageFlagBits>(module.shader_stage);
+            }
+            layout_data.set_number = reflect_set.set;
+            layout_data.create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            layout_data.create_info.bindingCount = reflect_set.binding_count;
+            layout_data.create_info.pBindings = layout_data.bindings.data();
+        }
+
+        // Merge duplicates
+        DynArray<VkDescriptorSetLayout> descriptor_sets(temp_arena, count);
+        for (u64 set_num = 0; set_num < count; set_num++) {
+            VULKAN_ASSERT(vkCreateDescriptorSetLayout(device, &descriptor_set_layouts[set_num].create_info, nullptr, &descriptor_sets[set_num]), "Failed to create descriptor set {}", set_num)
+        }
+        all_descriptor_sets.add_from_container(descriptor_sets.begin(), descriptor_sets.end());
+    }
+    return all_descriptor_sets;
+} 
+
+PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : m_device_(renderer.vulkan_device()), m_shaders_(temp_arena) {
+    io::Folder shader_folder{temp_arena, "Shaders/"};
+    DynArray<Shader> shaders = parse_and_compile_shaders(temp_arena, shader_folder);
+    m_shaders_.resize(shaders.size());
+    for (u64 i = 0; i < shaders.size(); i++) {
+        VkShaderModuleCreateInfo shader_module_create_info{};
+        shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        std::vector<u32>& compiled_code = shaders[i].spirv_code;
+        shader_module_create_info.pCode = compiled_code.data();
+        shader_module_create_info.codeSize = compiled_code.size();
+        VULKAN_ASSERT(vkCreateShaderModule(m_device_, &shader_module_create_info, nullptr, &m_shaders_[i]), "Failed to create shader module {}", i)
+    }
+
+    DynArray<VkPipelineShaderStageCreateInfo> stages{temp_arena};
+    for (u64 i = 0; i < shaders.size(); i++) {
+        VkPipelineShaderStageCreateInfo shader_stage_create_info{};
+        shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stage_create_info.stage = shaders[i].shader_stage;
+        shader_stage_create_info.module = m_shaders_[i];
+        shader_stage_create_info.pName = "main";
+        stages[i] = shader_stage_create_info;
+    }
+    
     VkPipelineDynamicStateCreateInfo dynamic_state_create_info{};
     dynamic_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_state_create_info.dynamicStateCount = 2;
@@ -107,25 +208,18 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : 
     color_blend_state.blendConstants[2] = 0.0f; // Optional
     color_blend_state.blendConstants[3] = 0.0f; // Optional
 
+    DynArray<VkDescriptorSetLayout> sets = spirv_reflect_descriptor_pool(temp_arena, m_device_, shaders);
     VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
     pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_create_info.setLayoutCount = 0;
-    pipeline_layout_create_info.pSetLayouts = nullptr;
-
-    VkPushConstantRange push_constant_range{};
-    push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    push_constant_range.offset = 0;
-    push_constant_range.size = sizeof(SimplePushConstantData);
-    
-    pipeline_layout_create_info.pushConstantRangeCount = 1;
-    pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
+    pipeline_layout_create_info.setLayoutCount = static_cast<u32>(sets.size());
+    pipeline_layout_create_info.pSetLayouts = sets.data();
 
     VULKAN_ASSERT(vkCreatePipelineLayout(renderer.vulkan_device(), &pipeline_layout_create_info, nullptr, &m_pipeline_layout_), "Failed to create pipeline layout!")
 
     VkGraphicsPipelineCreateInfo pipeline_create_info{};
     pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_create_info.stageCount = 2;
-    pipeline_create_info.pStages = stages;
+    pipeline_create_info.stageCount = static_cast<u32>(stages.size());
+    pipeline_create_info.pStages = stages.data();
 
     pipeline_create_info.pVertexInputState = &vertex_input_state_create_info;
     pipeline_create_info.pInputAssemblyState = &input_assembly_create_info;
@@ -145,10 +239,28 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : 
     VULKAN_ASSERT(vkCreateGraphicsPipelines(renderer.vulkan_device(), VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &m_pipeline_), "Failed to create pipeline!")
 }
 
+VkShaderModule PipelineWrapper::load_shader_code(ShaderEnum shader_to_load, Arena& temp_arena) const {
+    const char* file_path;
+    switch (shader_to_load) {
+        case GLOBAL_VERTEX_SHADER:
+            file_path = "Shaders/global.vert.spv";
+            break;
+        case GLOBAL_FRAGMENT_SHADER:
+            file_path = "Shaders/global.frag.spv";
+            break;
+        default:
+            file_path = "";
+    }
+    io::RawFile file{io::Resource::SHADER, temp_arena, file_path};
+    DynArray<byte> spirv_code = file.read_raw_bytes();
+    return create_shader_module(m_device_, spirv_code);
+}
+
 PipelineWrapper::~PipelineWrapper() {
     vkDeviceWaitIdle(m_device_);
-    vkDestroyShaderModule(m_device_, m_vertex_shader_, nullptr);
-    vkDestroyShaderModule(m_device_, m_fragment_shader_, nullptr);
+    for (const VkShaderModule shader_module : m_shaders_) {
+        vkDestroyShaderModule(m_device_, shader_module, nullptr);
+    }
     vkDestroyPipelineLayout(m_device_, m_pipeline_layout_, nullptr);
     vkDestroyPipeline(m_device_, m_pipeline_, nullptr);
 }
@@ -161,19 +273,11 @@ VkPipeline PipelineWrapper::get_pipeline() const {
     return m_pipeline_;
 }
 
-VkShaderModule PipelineWrapper::get_vertex_shader() const {
-    return m_vertex_shader_;
-}
-
-VkShaderModule PipelineWrapper::get_fragment_shader() const {
-    return m_fragment_shader_;
-}
-
 void PipelineWrapper::bind(VkCommandBuffer command_buffer) const {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_);
 }
 
-VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const ArrayRef<byte>& code) {
+VkShaderModule PipelineWrapper::create_shader_module(const VkDevice device, const DynArray<byte>& code) {
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();

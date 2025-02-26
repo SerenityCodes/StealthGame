@@ -2,8 +2,6 @@
 
 #include "Wrappers/DeviceBufferWrapper.h"
 
-#include <string>
-
 namespace engine::vulkan {
 
 class VulkanTexture {
@@ -21,6 +19,10 @@ class VulkanTexture {
     void create_texture_sampler(VulkanRenderer& renderer);
 public:
     VulkanTexture(VulkanRenderer& renderer, const char* file_path);
+    VulkanTexture(const VulkanTexture&) = delete;
+    VulkanTexture(VulkanTexture&&) = delete;
+    VulkanTexture& operator=(const VulkanTexture&) = delete;
+    VulkanTexture& operator=(VulkanTexture&&) = delete;
     ~VulkanTexture();
 
     VkImage get_image() const;

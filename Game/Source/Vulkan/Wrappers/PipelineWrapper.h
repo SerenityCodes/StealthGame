@@ -2,8 +2,10 @@
 
 #include <glm/glm.hpp>
 
+#include "Shader.h"
 #include "SwapChain.h"
 #include "common.h"
+#include "Vulkan/ShaderEnum.h"
 #include "Vulkan/VulkanModel.h"
 #include "Vulkan/VulkanRenderer.h"
 
@@ -13,28 +15,28 @@ constexpr VkDynamicState dynamic_states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAM
 
 class PipelineWrapper {
 public:
-    struct SimplePushConstantData {
-        glm::mat4 transform;
-        glm::mat4 normal;
+    struct DescriptorSetLayoutData {
+        u32 set_number;
+        VkDescriptorSetLayoutCreateInfo create_info;
+        DynArray<VkDescriptorSetLayoutBinding> bindings;
     };
 private:
     VkDevice m_device_;
-    VkShaderModule m_vertex_shader_;
-    VkShaderModule m_fragment_shader_;
+    DynArray<VkShaderModule> m_shaders_;
     VkPipelineLayout m_pipeline_layout_;
     VkPipeline m_pipeline_;
+
+    VkShaderModule load_shader_code(ShaderEnum shader_to_load, Arena& temp_arena) const;
 public:
     PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer);
     ~PipelineWrapper();
     
     VkPipelineLayout get_pipeline_layout() const;
     VkPipeline get_pipeline() const;
-    VkShaderModule get_vertex_shader() const;
-    VkShaderModule get_fragment_shader() const;
 
     void bind(VkCommandBuffer command_buffer) const;
     
-    static VkShaderModule create_shader_module(VkDevice device, const ArrayRef<byte>& code);
+    static VkShaderModule create_shader_module(VkDevice device, const DynArray<byte>& code);
 };
 
 }

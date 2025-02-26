@@ -4,8 +4,7 @@
 
 namespace engine::vulkan {
 
-VkDeviceSize DeviceBufferWrapper::aligned_size(VkDeviceSize size,
-    VkDeviceSize alignment) {
+VkDeviceSize DeviceBufferWrapper::aligned_size(VkDeviceSize size, VkDeviceSize alignment) {
     if (alignment > 0) {
         return (size + alignment - 1) & ~(alignment - 1);
     }

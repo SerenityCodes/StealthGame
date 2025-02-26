@@ -56,6 +56,8 @@ public:
 
     void bind(VkCommandBuffer command_buffer) const;
     void draw(VkCommandBuffer command_buffer) const;
+
+    VkDevice get_device() const;
 };
 
 }

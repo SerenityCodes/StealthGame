@@ -13,9 +13,8 @@ void setup_render_system(const flecs::world& world) {
             const flecs::world ecs_world = entity.world();
             const auto& [cmd_buffer, pipeline_layout] = *ecs_world.get<VulkanRenderInfo>();
             const Camera* camera = ecs_world.get<Camera>();
-            glm::mat4 projection_view = camera->get_projection() * camera->get_view();
-            const engine::vulkan::PipelineWrapper::SimplePushConstantData push_constant{.transform = projection_view * transform.as_matrix(), .normal = transform.normal_matrix()};
-            vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(engine::vulkan::PipelineWrapper::SimplePushConstantData), &push_constant);
+            engine::vulkan::VulkanRenderer::UniformBufferObject ubo{.model = transform.as_matrix(), .view = camera->get_view(), .projection = camera->get_projection()};
+            
             renderable.model->bind(cmd_buffer);
             renderable.model->draw(cmd_buffer);  
         });

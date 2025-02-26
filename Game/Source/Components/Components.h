@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include "Vulkan/VulkanModel.h"
+#include "Vulkan/VulkanTexture.h"
 
 namespace components {
 
@@ -84,6 +85,7 @@ struct Transform3D {
 
 struct Renderable {
     engine::vulkan::VulkanModel* model;
+    engine::vulkan::VulkanTexture* texture;
 };
 
 struct WindowComponent {

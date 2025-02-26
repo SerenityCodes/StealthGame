@@ -22,6 +22,17 @@ public:
         glm::mat4 projection;
     };
 
+    struct Frame {
+        VkImage image;
+        VkImageView view;
+        VkFramebuffer frame_buffer;
+        VkCommandBuffer command_buffer;
+        VkSemaphore image_available;
+        VkSemaphore render_finished;
+        VkFence in_flight;
+        UniformBufferObject ubo;
+    };
+
     struct QueueFamily {
         u32 graphics_family_index{std::numeric_limits<u32>::max()};
         u32 present_family_index{std::numeric_limits<u32>::max()};
@@ -89,7 +100,7 @@ public:
     [[nodiscard]] float get_aspect_ratio() const;
 
     bool should_close_window() const;
-    void poll();
+    void poll() const;
 
     GLFWwindow* raw_glfw_window() const;
     VkDevice vulkan_device() const;

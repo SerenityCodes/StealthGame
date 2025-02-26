@@ -87,6 +87,28 @@ String String::concat(Arena& new_str_arena, const String& str) const {
     return new_str;
 }
 
+String String::append(Arena& new_str_arena, const String& str) const {
+    String new_str{new_str_arena, m_length_ + str.length()};
+    for (u64 i = 0; i < m_length_; i++) {
+        new_str[i] = m_str_[i];
+    }
+    for (u64 i = 0; i < str.length(); i++) {
+        new_str[i] = str[i];
+    }
+    return new_str;
+}
+
+String String::prepend(Arena& new_str_arena, const String& str) const {
+    String new_str{new_str_arena, m_length_ + str.length()};
+    for (u64 i = 0; i < str.length(); i++) {
+        new_str[i] = str[i];
+    }
+    for (u64 i = 0; i < m_length_; i++) {
+        new_str[i] = m_str_[i];
+    }
+    return new_str;
+}
+
 byte String::bound_check_access(size_t index, int* error_code) {
     if (index <= 0 || index >= m_length_) {
         *error_code = 1;
@@ -111,4 +133,33 @@ byte& String::operator[](size_t index) {
 
 byte& String::operator[](size_t index) const {
     return m_str_[index];
+}
+
+bool String::operator==(const String& other) const {
+    if (m_length_ != other.m_length_) {
+        return false;
+    }
+    for (u64 i = 0; i < m_length_; i++) {
+        if (m_str_[i] != other.m_str_[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool String::operator!=(const String& other) const {
+    return !(*this == other);
+}
+
+bool String::operator==(const char* other) const {
+    u64 len = strlen(other);
+    if (len != m_length_) {
+        return false;
+    }
+    for (u64 i = 0; i < len; i++) {
+        if (m_str_[i] != other[i]) {
+            return false;
+        }
+    }
+    return true;
 }

@@ -13,8 +13,7 @@
 
 namespace engine::vulkan {
 
-VkVertexInputBindingDescription VulkanModel::Vertex::
-get_binding_descriptions() {
+VkVertexInputBindingDescription VulkanModel::Vertex::get_binding_descriptions() {
     VkVertexInputBindingDescription binding_description;
     binding_description.binding = 0;
     binding_description.stride = sizeof(Vertex);
@@ -115,7 +114,6 @@ void process_node(aiNode* node, const aiScene* scene, DynArray<VulkanModel::Vert
 }
 
 void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* base_model_path, u32 import_flags) {
-    using temp_string = std::basic_string<char, std::char_traits<char>, STLArenaAllocator<char>>;
     temp_string obj_path = base_model_path + temp_string{".obj", STLArenaAllocator<char>{&temp_arena}};
     temp_string processed_path = base_model_path + temp_string{".processed", STLArenaAllocator<char>{&temp_arena}};
     bool has_been_processed = std::filesystem::exists(processed_path);
@@ -217,6 +215,10 @@ void VulkanModel::draw(VkCommandBuffer command_buffer) const {
     } else {
         vkCmdDraw(command_buffer, static_cast<uint32_t>(m_vertex_count_), 1, 0, 0);
     }
+}
+
+VkDevice VulkanModel::get_device() const {
+    return m_device_;
 }
 
 }

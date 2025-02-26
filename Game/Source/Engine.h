@@ -12,7 +12,7 @@ namespace engine {
 	    Arena m_temp_arena_;
 	    Arena m_permanent_arena_;
 	    vulkan::VulkanRenderer m_renderer_;
-	    vulkan::PipelineWrapper m_pipeline_;
+	    ObjectHolder<vulkan::PipelineWrapper> m_pipeline_;
 	    flecs::world m_world_;
 	public:
 	    StealthEngine();
@@ -28,9 +28,6 @@ namespace engine {
 	    vulkan::VulkanModel load_model(const String& file_name);
 	    vulkan::VulkanModel load_model(const char* file_name);
 	    float get_aspect_ratio() const;
-
-	    static ArrayRef<byte> read_temporary_file(Arena& temp_arena, const String& file_name);
-	    static ArrayRef<byte> read_temporary_file(Arena& temp_arena, const char* file_name);
 	};
 
 }

@@ -7,7 +7,7 @@
 
 template <typename T>
 class DynArray {
-   Arena* m_alloc_; 
+    Arena* m_alloc_; 
     size_t m_size_;
     size_t m_capacity_;
     T* m_data_ptr_;
@@ -132,6 +132,7 @@ public:
     T& operator[](size_t index) const;
     T& operator[](size_t index);
     void push_back(const T& value);
+    void emplace_back(T&& value);
     template <typename It>
     void add_from_container(It begin, It end);
 
@@ -203,7 +204,7 @@ DynArray<T>& DynArray<T>::operator=(const DynArray& other) noexcept {
 
 template<typename T>
 DynArray<T>::DynArray(DynArray&& other) noexcept {
-    m_alloc_ = &other.m_alloc_;
+    m_alloc_ = other.m_alloc_;
     m_size_ = other.m_size_;
     m_capacity_ = other.m_capacity_;
     this->m_data_ptr_ = other.m_data_ptr_;
@@ -276,6 +277,19 @@ void DynArray<T>::push_back(const T& value) {
         resize(m_capacity_ * 2);
     }
     m_data_ptr_[m_size_++] = value;
+}
+
+template <typename T>
+void DynArray<T>::emplace_back(T&& value) {
+    if (m_capacity_ == 0) {
+        constexpr int default_capacity = 32;
+        m_data_ptr_ = static_cast<T*>(m_alloc_->push(sizeof(T) * default_capacity));
+        m_capacity_ = default_capacity;
+        m_size_ = 0;
+    } else if (m_size_ + 1 > m_capacity_) {
+        resize(m_capacity_ * 2);
+    }
+    m_data_ptr_[m_size_++] = std::move(value);
 }
 
 template <typename T>

@@ -482,7 +482,7 @@ bool VulkanRenderer::should_close_window() const {
     return m_window_.should_close();
 }
 
-void VulkanRenderer::poll() {
+void VulkanRenderer::poll() const {
     m_window_.glfw_poll_events();
 }
 

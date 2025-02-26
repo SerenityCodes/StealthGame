@@ -12,12 +12,14 @@ project "Game"
     "Source/Systems/**.h", "Source/Systems/**.cpp",
     "Source/Vulkan/**.h", "Source/Vulkan/**.cpp",
     "Source/App.cpp", "Source/common.h", "Source/Engine*",
+    "Source/FileIO/**.h", "Source/FileIO/**.cpp",
     "Vendor/flecs/**.h", "Vendor/flecs/**.c",
     "Vendor/spdlog/include/**.h", "Vendor/spdlog/src/**.cpp",
     "Vendor/stb_image/**.h", "Vendor/stb_image/**.cpp",
     "Vendor/glm/**.hpp", "Vendor/glm/**.h",
     "Vendor/imgui/**.h", "Vendor/imgui/**.cpp",
-    "Vendor/vma/include/**.h"}
+    "Vendor/vma/include/**.h",
+    "Vendor/spirv-reflect/**.h", "Vendor/spirv-reflect/**.cpp", "Vendor/spirv-reflect/**.c"}
 
    defines
    {
@@ -38,12 +40,17 @@ project "Game"
       "Vendor/imgui",
       "Vendor/vma/include",
       "Vendor/spdlog/include",
-      "Vendor/assimp/include"
+      "Vendor/assimp/include",
+      "Vendor/spirv-reflect"
    }
 
    links
    {
-      vulkanSDKPath .. "/Lib/vulkan-1.lib", "GLFW", "assimp"
+      vulkanSDKPath .. "/Lib/vulkan-1.lib",
+      vulkanSDKPath .. "/Lib/glslang.lib",
+      vulkanSDKPath .. "/Lib/glslang-default-resource-limits.lib",
+      vulkanSDKPath .. "/Lib/SPIRV.lib",
+      "GLFW", "assimp"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
