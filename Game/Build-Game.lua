@@ -47,10 +47,7 @@ project "Game"
    links
    {
       vulkanSDKPath .. "/Lib/vulkan-1.lib",
-      vulkanSDKPath .. "/Lib/glslang.lib",
-      vulkanSDKPath .. "/Lib/glslang-default-resource-limits.lib",
-      vulkanSDKPath .. "/Lib/SPIRV.lib",
-      "GLFW", "assimp"
+      "GLFW", "assimp", "glslang"
    }
 
    targetdir ("../Binaries/" .. outputdir .. "/%{prj.name}")
@@ -69,13 +66,13 @@ project "Game"
        symbols "On"
 
    filter "configurations:Release"
-       defines { "RELEASE" }
+       defines { "RELEASE", "NDEBUG" }
        runtime "Release"
        optimize "On"
        symbols "On"
 
    filter "configurations:Dist"
-       defines { "DIST" }
+       defines { "DIST", "NDEBUG" }
        runtime "Release"
        optimize "On"
        symbols "Off"

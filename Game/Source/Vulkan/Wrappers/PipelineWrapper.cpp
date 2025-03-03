@@ -6,9 +6,9 @@
 #include <iostream>
 
 #include "Engine.h"
-#include "spirv_reflect.h"
 #include "FileIO/FileIO.h"
 #include "Vulkan/VulkanModel.h"
+#include <spirv_reflect.h>
 
 namespace engine::vulkan {
 
@@ -27,16 +27,16 @@ DynArray<Shader> parse_and_compile_shaders(Arena& temp_arena, io::Folder& path) 
         String full_path = shader_file.get_file_path();
         bool is_vertex = extension == ".vert";
         bool is_fragment = extension == ".frag";
-        if (is_vertex && is_fragment) {
+        if (is_vertex || is_fragment) {
             DynArray<byte> raw_code = shader_file.read_raw_bytes();
             EShLanguage stage = is_vertex ? EShLangVertex : EShLangFragment;
-            glslang::TShader* shader = static_cast<glslang::TShader*>(temp_arena.push(sizeof(glslang::TShader)));
+            glslang::TShader* shader = new (static_cast<glslang::TShader*>(temp_arena.push(sizeof(glslang::TShader)))) glslang::TShader(stage);
             
             const char* shader_code = reinterpret_cast<const char*>(raw_code.data());
             shader->setStrings(&shader_code, i + 1);
             TBuiltInResource resources{};
             if (!shader->parse(&resources, 100, false, messages)) {
-                ENGINE_LOG_ERROR("Shader compilation failed for {}. Shader log: {}", full_path, shader->getInfoLog());
+                ENGINE_LOG_ERROR("Shader compilation failed for {}. Shader log: {}", full_path.c_str(temp_arena), shader->getInfoLog());
                 continue;
             }
             Shader shader_obj = load_shader(temp_arena, full_path, extension);
@@ -107,7 +107,7 @@ DynArray<VkDescriptorSetLayout> spirv_reflect_descriptor_pool(Arena& temp_arena,
 } 
 
 PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : m_device_(renderer.vulkan_device()), m_shaders_(temp_arena) {
-    io::Folder shader_folder{temp_arena, "Shaders/"};
+    io::Folder shader_folder{&temp_arena, "Shaders/"};
     DynArray<Shader> shaders = parse_and_compile_shaders(temp_arena, shader_folder);
     m_shaders_.resize(shaders.size());
     for (u64 i = 0; i < shaders.size(); i++) {
@@ -251,7 +251,7 @@ VkShaderModule PipelineWrapper::load_shader_code(ShaderEnum shader_to_load, Aren
         default:
             file_path = "";
     }
-    io::RawFile file{io::Resource::SHADER, temp_arena, file_path};
+    io::RawFile file{&temp_arena, file_path};
     DynArray<byte> spirv_code = file.read_raw_bytes();
     return create_shader_module(m_device_, spirv_code);
 }

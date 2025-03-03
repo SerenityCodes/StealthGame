@@ -163,3 +163,7 @@ bool String::operator==(const char* other) const {
     }
     return true;
 }
+
+bool String::operator!=(const char* other) const {
+    return !(*this == other);
+}

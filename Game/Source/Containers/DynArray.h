@@ -111,6 +111,9 @@ public:
             return !((*this) == other);
         }
     };
+private:
+    void add_capacity_if_needed();
+public:
 
     explicit DynArray(Arena& arena);
     DynArray(Arena& arena, size_t size);
@@ -132,7 +135,8 @@ public:
     T& operator[](size_t index) const;
     T& operator[](size_t index);
     void push_back(const T& value);
-    void emplace_back(T&& value);
+    template <typename ...Args>
+    void emplace_back(Args&&... args);
     template <typename It>
     void add_from_container(It begin, It end);
 
@@ -144,6 +148,18 @@ public:
     const_iterator cbegin() const;
     const_iterator cend() const;
 };
+
+template <typename T>
+void DynArray<T>::add_capacity_if_needed() {
+    if (m_capacity_ == 0) {
+        constexpr int default_capacity = 32;
+        m_data_ptr_ = static_cast<T*>(m_alloc_->push(sizeof(T) * default_capacity));
+        m_capacity_ = default_capacity;
+        m_size_ = 0;
+    } else if (m_size_ + 1 > m_capacity_) {
+        resize(m_capacity_ * 2);
+    }
+}
 
 template<typename T>
 DynArray<T>::DynArray(Arena& arena) {
@@ -234,7 +250,7 @@ bool DynArray<T>::is_empty() const {
 template<typename T>
 void DynArray<T>::resize(const size_t new_capacity) {
     T* new_data = static_cast<T*>(m_alloc_->push(new_capacity * sizeof(T)));
-    std::copy(begin(), end(), new_data);
+    std::move(begin(), end(), new_data);
     m_data_ptr_ = new_data;
     this->m_capacity_ = new_capacity;
     // Pop old data off. However, using stack allocator here
@@ -268,28 +284,15 @@ T& DynArray<T>::operator[](size_t index) {
 
 template <typename T>
 void DynArray<T>::push_back(const T& value) {
-    if (m_capacity_ == 0) {
-        constexpr int default_capacity = 32;
-        m_data_ptr_ = static_cast<T*>(m_alloc_->push(sizeof(T) * default_capacity));
-        m_capacity_ = default_capacity;
-        m_size_ = 0;
-    } else if (m_size_ + 1 > m_capacity_) {
-        resize(m_capacity_ * 2);
-    }
+    add_capacity_if_needed();
     m_data_ptr_[m_size_++] = value;
 }
 
 template <typename T>
-void DynArray<T>::emplace_back(T&& value) {
-    if (m_capacity_ == 0) {
-        constexpr int default_capacity = 32;
-        m_data_ptr_ = static_cast<T*>(m_alloc_->push(sizeof(T) * default_capacity));
-        m_capacity_ = default_capacity;
-        m_size_ = 0;
-    } else if (m_size_ + 1 > m_capacity_) {
-        resize(m_capacity_ * 2);
-    }
-    m_data_ptr_[m_size_++] = std::move(value);
+template <typename ...Args>
+void DynArray<T>::emplace_back(Args&&... args) {
+    add_capacity_if_needed();
+    m_data_ptr_[m_size_++] = T{std::forward<Args>(args)...};
 }
 
 template <typename T>
