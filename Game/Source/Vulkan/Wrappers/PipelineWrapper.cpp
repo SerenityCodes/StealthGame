@@ -20,28 +20,26 @@ DynArray<Shader> parse_and_compile_shaders(Arena& temp_arena, io::Folder& path) 
     
     glslang::InitializeProcess();
     glslang::TProgram program;
-    DynArray<io::RawFile> files = path.read_all_files();
-    for (int i = 0; i < static_cast<int>(files.size()); i++) {
-        io::RawFile& shader_file = files[i];
+    for (int i = 0; i < static_cast<int>(path.get_amount_of_files()); i++) {
+        io::RawFile shader_file = path.read_file(i);
         String extension = shader_file.get_file_extension();
-        String full_path = shader_file.get_file_path();
-        bool is_vertex = extension == ".vert";
-        bool is_fragment = extension == ".frag";
+        String& full_path = shader_file.get_file_path();
+        bool is_vertex = extension == "vert";
+        bool is_fragment = extension == "frag";
         if (is_vertex || is_fragment) {
             DynArray<byte> raw_code = shader_file.read_raw_bytes();
             EShLanguage stage = is_vertex ? EShLangVertex : EShLangFragment;
             glslang::TShader* shader = new (static_cast<glslang::TShader*>(temp_arena.push(sizeof(glslang::TShader)))) glslang::TShader(stage);
             
             const char* shader_code = reinterpret_cast<const char*>(raw_code.data());
-            shader->setStrings(&shader_code, i + 1);
+            shader->setStrings(&shader_code, i);
             TBuiltInResource resources{};
-            if (!shader->parse(&resources, 100, false, messages)) {
+            if (!shader->parse(&resources, 450, false, messages)) {
                 ENGINE_LOG_ERROR("Shader compilation failed for {}. Shader log: {}", full_path.c_str(temp_arena), shader->getInfoLog());
                 continue;
             }
-            Shader shader_obj = load_shader(temp_arena, full_path, extension);
+            ret_shaders.push_back(load_shader(temp_arena, full_path, extension));
             shaders.push_back(shader);
-            ret_shaders.push_back(shader_obj);
             program.addShader(shader);
         }
     }
@@ -121,12 +119,10 @@ PipelineWrapper::PipelineWrapper(Arena& temp_arena, VulkanRenderer& renderer) : 
 
     DynArray<VkPipelineShaderStageCreateInfo> stages{temp_arena};
     for (u64 i = 0; i < shaders.size(); i++) {
-        VkPipelineShaderStageCreateInfo shader_stage_create_info{};
-        shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shader_stage_create_info.stage = shaders[i].shader_stage;
-        shader_stage_create_info.module = m_shaders_[i];
-        shader_stage_create_info.pName = "main";
-        stages[i] = shader_stage_create_info;
+        stages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[i].stage = shaders[i].shader_stage;
+        stages[i].module = m_shaders_[i];
+        stages[i].pName = "main";
     }
     
     VkPipelineDynamicStateCreateInfo dynamic_state_create_info{};
@@ -243,10 +239,10 @@ VkShaderModule PipelineWrapper::load_shader_code(ShaderEnum shader_to_load, Aren
     const char* file_path;
     switch (shader_to_load) {
         case GLOBAL_VERTEX_SHADER:
-            file_path = "Shaders/global.vert.spv";
+            file_path = "Shaders/global.vert";
             break;
         case GLOBAL_FRAGMENT_SHADER:
-            file_path = "Shaders/global.frag.spv";
+            file_path = "Shaders/global.frag";
             break;
         default:
             file_path = "";

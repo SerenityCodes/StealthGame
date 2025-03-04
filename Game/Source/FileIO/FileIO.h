@@ -20,15 +20,16 @@ class RawFile {
     String m_file_path_;
 public:
     RawFile(Arena* arena, const char* path);
-    RawFile(const RawFile&) = delete;
-    RawFile& operator=(const RawFile&) = delete;
+    RawFile(const RawFile& other);
+    RawFile& operator=(const RawFile& other);
     RawFile(RawFile&& other) noexcept;
     RawFile& operator=(RawFile&& other) noexcept;
     ~RawFile() = default;
 
     DynArray<byte> read_raw_bytes() const;
     [[nodiscard]] String get_file_extension() const;
-    String get_file_path() const;
+    String& get_file_path();
+    String copy_file_path() const;
 };
 
 class Folder {

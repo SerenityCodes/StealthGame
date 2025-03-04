@@ -5,21 +5,38 @@
 
 #include "Memory/Arena.h"
 
-String::String(Arena& arena, size_t length) : m_length_(length), m_str_(static_cast<byte*>(arena.push(m_length_))) {
+String::String(Arena& arena, size_t length) : m_arena_(&arena), m_length_(length), m_str_(static_cast<byte*>(arena.push(m_length_ + 1))) {
     
 }
 
-String::String(Arena& arena, const char* c_str) : m_length_(strlen(c_str)), m_str_(static_cast<byte*>(arena.push(m_length_ - 1))) {
+String::String(Arena& arena, const char* c_str) : m_arena_(&arena), m_length_(strlen(c_str)), m_str_(static_cast<byte*>(arena.push(m_length_ + 1))) {
     // Copy all but null byte. Won't need it.
-    memcpy(m_str_, c_str, m_length_ - 1);
+    memcpy(m_str_, c_str, m_length_);
+    m_str_[m_length_] = '\0';
 }
 
-String::String(String&& other) noexcept : m_length_(other.m_length_), m_str_(other.m_str_) {
+String::String(const String& other) : m_arena_(other.m_arena_), m_length_(other.m_length_), m_str_(static_cast<byte*>(m_arena_->push(m_length_ + 1))) {
+    memcpy(m_str_, other.m_str_, m_length_);
+    m_str_[m_length_] = '\0';
+}
+
+String& String::operator=(const String& other) {
+    if (this != &other) {
+        m_arena_ = other.m_arena_;
+        m_length_ = other.m_length_;
+        memcpy(m_str_, other.m_str_, m_length_);
+        m_str_[m_length_] = '\0';
+    }
+    return *this;
+}
+
+String::String(String&& other) noexcept : m_arena_(other.m_arena_), m_length_(other.m_length_), m_str_(other.m_str_) {
     
 }
 
 String& String::operator=(String&& other) noexcept {
     if (this != &other) {
+        m_arena_ = other.m_arena_;
         m_length_ = other.m_length_;
         m_str_ = other.m_str_;
     }
@@ -31,8 +48,7 @@ size_t String::length() const {
 }
 
 const char* String::c_str(Arena& arena) const {
-    const size_t new_length = m_length_ + 1;
-    char* str = static_cast<char*>(arena.push(new_length));
+    char* str = static_cast<char*>(arena.push(m_length_ + 1));
     memcpy(str, m_str_, m_length_);
     str[m_length_] = '\0';
     return str;
@@ -73,8 +89,8 @@ String String::lower(Arena& new_str_arena) const {
 
 String String::reverse(Arena& new_str_arena) const {
     String return_str{new_str_arena, m_length_};
-    size_t i = 0, j = m_length_ - 1;
-    while (i < j) {
+    size_t i = 0, j = m_length_;
+    while (i < m_length_ && j > 0) {
         return_str[i++] = m_str_[j--];
     }
     return return_str;
@@ -89,23 +105,17 @@ String String::concat(Arena& new_str_arena, const String& str) const {
 
 String String::append(Arena& new_str_arena, const String& str) const {
     String new_str{new_str_arena, m_length_ + str.length()};
-    for (u64 i = 0; i < m_length_; i++) {
-        new_str[i] = m_str_[i];
-    }
-    for (u64 i = 0; i < str.length(); i++) {
-        new_str[i] = str[i];
-    }
+    memcpy(new_str.m_str_, m_str_, m_length_);
+    memcpy(new_str.m_str_ + m_length_, str.m_str_, str.length());
+    new_str[m_length_] = '\0';
     return new_str;
 }
 
 String String::prepend(Arena& new_str_arena, const String& str) const {
     String new_str{new_str_arena, m_length_ + str.length()};
-    for (u64 i = 0; i < str.length(); i++) {
-        new_str[i] = str[i];
-    }
-    for (u64 i = 0; i < m_length_; i++) {
-        new_str[i] = m_str_[i];
-    }
+    memcpy(new_str.m_str_, m_str_, m_length_);
+    memcpy(new_str.m_str_ + m_length_, str.m_str_, str.length());
+    new_str[m_length_] = '\0';
     return new_str;
 }
 
@@ -156,12 +166,7 @@ bool String::operator==(const char* other) const {
     if (len != m_length_) {
         return false;
     }
-    for (u64 i = 0; i < len; i++) {
-        if (m_str_[i] != other[i]) {
-            return false;
-        }
-    }
-    return true;
+    return memcmp(m_str_, other, len) == 0;
 }
 
 bool String::operator!=(const char* other) const {

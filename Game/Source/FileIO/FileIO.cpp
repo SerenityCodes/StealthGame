@@ -12,6 +12,20 @@ RawFile::RawFile(Arena* arena, const char* path) : m_arena_(arena), m_file_path_
     
 }
 
+RawFile::RawFile(const RawFile& other) : m_file_path_(other.copy_file_path()) {
+    if (this != &other) {
+        m_arena_ = other.m_arena_;
+    }
+}
+
+RawFile& RawFile::operator=(const RawFile& other) {
+    if (this != &other) {
+        m_arena_ = other.m_arena_;
+        m_file_path_ = other.copy_file_path();
+    }
+    return *this;
+}
+
 RawFile::RawFile(RawFile&& other) noexcept : m_arena_(other.m_arena_), m_file_path_(std::move(other.m_file_path_)) {
     
 }
@@ -31,8 +45,9 @@ DynArray<byte> RawFile::read_raw_bytes() const {
     file.seekg(0, std::ios::end);
     const std::streamsize file_size = file.tellg();
     file.seekg(0, std::ios::beg);
-    DynArray<byte> raw_bytes{*m_arena_, static_cast<size_t>(file_size)};
+    DynArray<byte> raw_bytes{*m_arena_, static_cast<size_t>(file_size + 1)};
     file.read(reinterpret_cast<char*>(raw_bytes.data()), file_size);
+    raw_bytes[file_size] = '\0';
     file.close();
     return raw_bytes;
 }
@@ -47,8 +62,12 @@ String RawFile::get_file_extension() const {
     return String{*m_arena_, ""};
 }
 
-String RawFile::get_file_path() const {
-    return String{*m_arena_, m_file_path_.c_str(*m_arena_)};
+String& RawFile::get_file_path() {
+    return m_file_path_;
+}
+
+String RawFile::copy_file_path() const {
+    return String{m_file_path_};
 }
 
 Folder::Folder(Arena* arena, const char* path) : m_arena_(arena), m_folder_path_(*arena, path), m_files_(*arena) {
@@ -61,8 +80,8 @@ Folder::Folder(Arena* arena, const char* path) : m_arena_(arena), m_folder_path_
 
 DynArray<RawFile> Folder::read_all_files() {
     DynArray<RawFile> files{*m_arena_, m_files_.size()};
-    for (String& file_path : m_files_) {
-        files.emplace_back(m_arena_, file_path.c_str(*m_arena_));
+    for (u32 i = 0; i < files.size(); i++) {
+        files[i] = RawFile{m_arena_, m_files_[i].c_str(*m_arena_)};
     }
     return files;
 }

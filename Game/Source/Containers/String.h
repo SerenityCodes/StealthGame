@@ -3,14 +3,15 @@
 #include "Memory/Arena.h"
 
 class String {
+    Arena* m_arena_;
     size_t m_length_;
     byte* m_str_;
 public:
     String(Arena& arena, size_t length);
     String(Arena& arena, const char* c_str);
     
-    String(const String& other) = delete;
-    String& operator=(const String& other) = delete;
+    String(const String& other);
+    String& operator=(const String& other);
     
     String(String&& other) noexcept;
     String& operator=(String&& other) noexcept;
