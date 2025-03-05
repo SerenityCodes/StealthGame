@@ -20,6 +20,7 @@ public:
         glm::mat4 model;
         glm::mat4 view;
         glm::mat4 projection;
+        glm::mat4 normal_matrix;
     };
 
     struct Frame {
@@ -30,7 +31,6 @@ public:
         VkSemaphore image_available;
         VkSemaphore render_finished;
         VkFence in_flight;
-        UniformBufferObject ubo;
     };
 
     struct QueueFamily {

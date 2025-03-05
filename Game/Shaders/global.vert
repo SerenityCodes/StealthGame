@@ -11,9 +11,8 @@ layout(binding = 0) uniform constants {
     mat4 model;
     mat4 view;
     mat4 projection;
+    mat4 normal_mat;
 };
-
-layout(set = 1, binding = 1) uniform sampler2D texture;
 
 const vec3 DIRECTION_TO_LIGHT = normalize(vec3(1.0, -3.0, -1.0));
 const float AMBIENT = 0.02;
@@ -24,5 +23,4 @@ void main() {
     vec3 normal_world_space = normalize(mat3(normal_mat) * normal);
     float light_intensity = AMBIENT + max(dot(normal_world_space, DIRECTION_TO_LIGHT), 0);
     fragColor = light_intensity * color;
-    fragTextCord = uv;
 }

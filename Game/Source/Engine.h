@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Containers/ArrayRef.h"
 #include "Memory/Arena.h"
 #include "Vulkan/Wrappers/PipelineWrapper.h"
 #include "../Vendor/flecs/flecs.h"
-#include "Containers/String.h"
 #include "Vulkan/VulkanRenderer.h"
 
 namespace engine {
@@ -24,8 +22,8 @@ namespace engine {
 
 	    void run();
 	    flecs::world& get_world();
-	    vulkan::VulkanModel create_model(const vulkan::VulkanModel::VertexIndexInfo& index_info);
-	    vulkan::VulkanModel load_model(const String& file_name);
+	    vulkan::VulkanModel create_model(vulkan::VulkanModel::VertexIndexInfo& index_info);
+	    vulkan::VulkanModel load_model(const arena_string& file_name);
 	    vulkan::VulkanModel load_model(const char* file_name);
 	    float get_aspect_ratio() const;
 	};

@@ -4,11 +4,13 @@
 #include <fstream>
 #include <regex>
 
-#include "Containers/String.h"
-
 namespace io {
 
-RawFile::RawFile(Arena* arena, const char* path) : m_arena_(arena), m_file_path_(*arena, path) {
+RawFile::RawFile(Arena* arena, const arena_string& file_path) : RawFile(arena, file_path.c_str()) {
+    
+}
+
+RawFile::RawFile(Arena* arena, const char* path) : m_arena_(arena), m_file_path_(path, STLArenaAllocator<char>{arena}) {
     
 }
 
@@ -38,64 +40,74 @@ RawFile& RawFile::operator=(RawFile&& other) noexcept {
     return *this;
 }
 
-DynArray<byte> RawFile::read_raw_bytes() const {
-    const char* c_path = m_file_path_.c_str(*m_arena_);
-    std::ifstream file{c_path, std::ios::binary | std::ios::ate};
-    ENGINE_ASSERT(file.is_open(), "Failed to open file {}", c_path)
+arena_vector<byte> RawFile::read_raw_bytes() const {
+    std::ifstream file{m_file_path_.data(), std::ios::binary | std::ios::ate};
+    ENGINE_ASSERT(file.is_open(), "Failed to open file {}", m_file_path_.data())
     file.seekg(0, std::ios::end);
     const std::streamsize file_size = file.tellg();
     file.seekg(0, std::ios::beg);
-    DynArray<byte> raw_bytes{*m_arena_, static_cast<size_t>(file_size + 1)};
+    arena_vector<byte> raw_bytes{static_cast<size_t>(file_size), STLArenaAllocator<byte>{m_arena_}};
     file.read(reinterpret_cast<char*>(raw_bytes.data()), file_size);
-    raw_bytes[file_size] = '\0';
     file.close();
     return raw_bytes;
 }
 
-String RawFile::get_file_extension() const {
+arena_string RawFile::read_contents() const {
+    std::ifstream file{m_file_path_.data(), std::ios::binary | std::ios::ate};
+    ENGINE_ASSERT(file.is_open(), "Failed to open file {}", m_file_path_.data())
+    file.seekg(0, std::ios::end);
+    const std::streamsize file_size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    arena_string raw_bytes{static_cast<u64>(file_size), ' ', STLArenaAllocator<char>{m_arena_}};
+    file.read(raw_bytes.data(), file_size);
+    file.close();
+    return raw_bytes;
+}
+
+arena_string RawFile::get_file_extension() const {
     std::regex extension_regex{"\\.\\w+"};
     std::cmatch extension_match;
     
-    if (std::regex_search(m_file_path_.c_str(*m_arena_), extension_match, extension_regex)) {
-        return String{*m_arena_, extension_match.str().substr(1, extension_match.str().length()).c_str()};
+    if (std::regex_search(m_file_path_.c_str(), extension_match, extension_regex)) {
+        return arena_string{extension_match.str().substr(1, extension_match.str().length()), STLArenaAllocator<char>{m_arena_}};
     }
-    return String{*m_arena_, ""};
+    return {"", STLArenaAllocator<char>{m_arena_}};
 }
 
-String& RawFile::get_file_path() {
+arena_string& RawFile::get_file_path() {
     return m_file_path_;
 }
 
-String RawFile::copy_file_path() const {
-    return String{m_file_path_};
+arena_string RawFile::copy_file_path() const {
+    return m_file_path_;
 }
 
-Folder::Folder(Arena* arena, const char* path) : m_arena_(arena), m_folder_path_(*arena, path), m_files_(*arena) {
+Folder::Folder(Arena* arena, const char* path) : m_arena_(arena), m_folder_path_(path, STLArenaAllocator<char>{arena}), m_files_(STLArenaAllocator<arena_string>{arena}) {
     for (const auto& entry : std::filesystem::directory_iterator(path)) {
         if (entry.is_regular_file()) {
-            m_files_.emplace_back(*m_arena_, entry.path().string().c_str());
+            m_files_.emplace_back(entry.path().string(), STLArenaAllocator<arena_string>{arena});
         }
     }
 }
 
-DynArray<RawFile> Folder::read_all_files() {
-    DynArray<RawFile> files{*m_arena_, m_files_.size()};
+arena_vector<RawFile> Folder::read_all_files() {
+    arena_vector<RawFile> files = MAKE_ARENA_VECTOR(m_arena_, RawFile);
+    files.reserve(m_files_.size());
     for (u32 i = 0; i < files.size(); i++) {
-        files[i] = RawFile{m_arena_, m_files_[i].c_str(*m_arena_)};
+        files[i] = RawFile{m_arena_, m_files_[i]};
     }
     return files;
 }
 
-RawFile Folder::read_file(const String& path) const {
-    String full_path = path.prepend(*m_arena_, m_folder_path_);
-    return RawFile{m_arena_, full_path.c_str(*m_arena_)};
+RawFile Folder::read_file(const arena_string& path) const {
+    return RawFile{m_arena_, path};
 }
 
 RawFile Folder::read_file(const char* path) const {
-    return read_file(String{*m_arena_, path});
+    return read_file(arena_string{path, STLArenaAllocator<char>{m_arena_}});
 }
 
-RawFile Folder::read_file(u32 index) {
+RawFile Folder::read_file(u32 index) const {
    return read_file(m_files_[index]);
 }
 

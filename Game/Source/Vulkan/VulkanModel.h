@@ -4,8 +4,6 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-#include "Containers/DynArray.h"
-
 #include "common.h"
 #include "Wrappers/DeviceBufferWrapper.h"
 
@@ -29,10 +27,10 @@ public:
 
     struct VertexIndexInfo {
         VertexIndexInfo(Arena& model_arena);
-        DynArray<Vertex> vertices;
-        DynArray<uint32_t> indices;
+        arena_vector<Vertex> vertices;
+        arena_vector<uint32_t> indices;
 
-        void load_model(Arena& temp_arena, const char* base_model_path, u32 import_flags = 0);
+        void load_model(Arena& temp_arena, const arena_string& base_model_path, u32 import_flags = 0);
     };
     
 private:
@@ -44,10 +42,10 @@ private:
 
     static void create_buffer_from_staging(VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, void* data_to_copy, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
 public:
-    VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertices);
+    VulkanModel(VulkanRenderer& renderer, VertexIndexInfo& vertices);
     ~VulkanModel() = default;
 
-    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const char* file_path);
+    static VulkanModel load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const arena_string& file_path);
 
     VulkanModel(const VulkanModel&) = delete;
     VulkanModel& operator=(const VulkanModel&) = delete;

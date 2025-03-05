@@ -70,17 +70,16 @@ flecs::world& StealthEngine::get_world() {
     return m_world_;
 }
 
-vulkan::VulkanModel StealthEngine::create_model(
-    const vulkan::VulkanModel::VertexIndexInfo& index_info) {
+vulkan::VulkanModel StealthEngine::create_model(vulkan::VulkanModel::VertexIndexInfo& index_info) {
     return vulkan::VulkanModel{m_renderer_, index_info};
 }
 
-vulkan::VulkanModel StealthEngine::load_model(const String& file_name) {
-    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_renderer_, file_name.c_str(m_temp_arena_));
+vulkan::VulkanModel StealthEngine::load_model(const arena_string& file_name) {
+    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_renderer_, file_name);
 }
 
 vulkan::VulkanModel StealthEngine::load_model(const char* file_name) {
-    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_renderer_, file_name);
+    return vulkan::VulkanModel::load_model(m_temp_arena_, m_permanent_arena_, m_renderer_, arena_string{file_name, STLArenaAllocator<char>{&m_temp_arena_}});
 }
 
 float StealthEngine::get_aspect_ratio() const {

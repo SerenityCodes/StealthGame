@@ -15,7 +15,15 @@ using i64 = int64_t;
 using f32 = float;
 using f64 = double;
 
-using temp_string = std::basic_string<char, std::char_traits<char>, STLArenaAllocator<char>>;
+using arena_string = std::basic_string<char, std::char_traits<char>, STLArenaAllocator<char>>;
+
+template <typename T>
+using arena_vector = std::vector<T, STLArenaAllocator<T>>;
+
+#define MAKE_ARENA_VECTOR(arena_ptr, T) arena_vector<T>{STLArenaAllocator<T>{arena_ptr}}
+
+template <typename K, typename V>
+using arena_map = std::unordered_map<K, V, STLArenaAllocator<std::pair<const K, V>>>;
 
 #ifdef DEBUG
 #define VULKAN_ASSERT(x, format_msg, ...) if ((x) != VK_SUCCESS) \

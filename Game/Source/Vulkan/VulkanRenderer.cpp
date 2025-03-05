@@ -2,7 +2,6 @@
 
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
-#include "Containers/DynArray.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -102,9 +101,10 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     // Create the instance
     u32 extension_count = 0;
     const char** needed_extensions = glfwGetRequiredInstanceExtensions(&extension_count);
-    DynArray<const char*> extensions_to_enable{temp_arena, extension_count};
+    arena_vector<const char*> extensions_to_enable = MAKE_ARENA_VECTOR(&temp_arena, const char*);
+    extensions_to_enable.reserve(extension_count);
     for (u32 i = 0; i < extension_count; i++) {
-        extensions_to_enable[i] = needed_extensions[i];
+        extensions_to_enable.push_back(needed_extensions[i]);
     }
     
     VkInstanceCreateInfo create_info{};
@@ -139,7 +139,7 @@ VulkanRenderer::VulkanRenderer(int height, int width, Arena& temp_arena, Arena& 
     // Create device
     m_physical_device_ = pick_physical_device(temp_arena, m_surface_, m_instance_);
     m_graphics_queue_family_ = find_indices(temp_arena, m_surface_, m_physical_device_).graphics_family_index;
-    DynArray device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME}, temp_arena};
+    arena_vector<const char*> device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME}, STLArenaAllocator<const char*>{&temp_arena}};
 
     constexpr float queue_priority = 1.0f;
     VkDeviceQueueCreateInfo queue_create_info{};
@@ -483,7 +483,7 @@ bool VulkanRenderer::should_close_window() const {
 }
 
 void VulkanRenderer::poll() const {
-    m_window_.glfw_poll_events();
+    Window::glfw_poll_events();
 }
 
 GLFWwindow* VulkanRenderer::raw_glfw_window() const {

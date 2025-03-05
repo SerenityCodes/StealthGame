@@ -50,11 +50,11 @@ std::array<VkVertexInputAttributeDescription, 4> VulkanModel::Vertex::get_attrib
 }
 
 VulkanModel::VertexIndexInfo::VertexIndexInfo(Arena& model_arena)
-: vertices(model_arena), indices(model_arena) {
+: vertices(MAKE_ARENA_VECTOR(&model_arena, Vertex)), indices(MAKE_ARENA_VECTOR(&model_arena, u32)) {
     
 }
 
-void process_mesh(aiMesh* mesh, DynArray<VulkanModel::Vertex>& vertices, DynArray<uint32_t>& indices) {
+void process_mesh(aiMesh* mesh, arena_vector<VulkanModel::Vertex>& vertices, arena_vector<uint32_t>& indices) {
     for (uint32_t i = 0; i < mesh->mNumVertices; i++) {
         VulkanModel::Vertex vertex;
 
@@ -103,7 +103,7 @@ void process_mesh(aiMesh* mesh, DynArray<VulkanModel::Vertex>& vertices, DynArra
     }
 }
 
-void process_node(aiNode* node, const aiScene* scene, DynArray<VulkanModel::Vertex>& vertices, DynArray<uint32_t>& indices) {
+void process_node(aiNode* node, const aiScene* scene, arena_vector<VulkanModel::Vertex>& vertices, arena_vector<uint32_t>& indices) {
     for (uint32_t i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         process_mesh(mesh, vertices, indices);
@@ -113,9 +113,9 @@ void process_node(aiNode* node, const aiScene* scene, DynArray<VulkanModel::Vert
     }
 }
 
-void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* base_model_path, u32 import_flags) {
-    temp_string obj_path = base_model_path + temp_string{".obj", STLArenaAllocator<char>{&temp_arena}};
-    temp_string processed_path = base_model_path + temp_string{".processed", STLArenaAllocator<char>{&temp_arena}};
+void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const arena_string& base_model_path, u32 import_flags) {
+    arena_string obj_path = base_model_path + ".obj";
+    arena_string processed_path = base_model_path + ".processed";
     bool has_been_processed = std::filesystem::exists(processed_path);
     if (std::filesystem::exists(obj_path) && !has_been_processed) {
         Assimp::Importer importer;
@@ -167,7 +167,7 @@ void VulkanModel::VertexIndexInfo::load_model(Arena& temp_arena, const char* bas
     }
 }
 
-VulkanModel::VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertices) : m_device_(renderer.vulkan_device()),
+VulkanModel::VulkanModel(VulkanRenderer& renderer, VertexIndexInfo& vertices) : m_device_(renderer.vulkan_device()),
     m_vertex_buffer_(renderer, sizeof(Vertex), static_cast<uint32_t>(vertices.vertices.size()), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0),
     m_index_buffer_(renderer, sizeof(uint32_t), static_cast<uint32_t>(vertices.indices.size()), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0) {
     m_vertex_count_ = vertices.vertices.size();
@@ -193,7 +193,7 @@ VulkanModel::VulkanModel(VulkanRenderer& renderer, const VertexIndexInfo& vertic
     renderer.copy_buffer(index_staging_buffer.buffer(), m_index_buffer_.buffer(), sizeof(uint32_t) * tiny_index_count);
 }
 
-VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const char* file_path) {
+VulkanModel VulkanModel::load_model(Arena& temp_arena, Arena& model_arena, VulkanRenderer& renderer, const arena_string& file_path) {
     VertexIndexInfo vertex_index_info{model_arena};
     vertex_index_info.load_model(temp_arena, file_path);
     return VulkanModel{renderer, vertex_index_info};

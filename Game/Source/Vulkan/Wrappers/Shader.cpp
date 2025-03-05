@@ -3,16 +3,14 @@
 #include <regex>
 
 #include "FileIO/FileIO.h"
-#include <glslang/Public/ShaderLang.h>
 
 namespace engine::vulkan {
 
-Shader load_shader(Arena& temp_arena, const String& full_path, const String& extension) {
+void load_shader(Shader& shader, const arena_string& full_path, const arena_string& extension) {
     std::regex file_name_regex{"\\w+\\."};
     std::cmatch file_name_match;
 
-    Shader shader{.shader_type = GLOBAL_VERTEX_SHADER, .shader_stage = VK_SHADER_STAGE_VERTEX_BIT, .spirv_code = {}};
-    if (std::regex_search(full_path.c_str(temp_arena), file_name_match, file_name_regex)) {
+    if (std::regex_search(full_path.data(), file_name_match, file_name_regex)) {
         std::string shader_name = file_name_match.str().substr(0, file_name_match.str().length() - 1);
         ENGINE_LOG_INFO("File name {}", shader_name)
         if (shader_name == "global") {
@@ -26,7 +24,6 @@ Shader load_shader(Arena& temp_arena, const String& full_path, const String& ext
             }
         }
     }
-    return shader;
 }
 
 }
