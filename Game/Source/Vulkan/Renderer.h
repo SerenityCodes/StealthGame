@@ -8,8 +8,6 @@
 #include "../../Vendor/vk-bootstrap/VkBootstrap.h"
 #include "Containers/ObjectHolder.h"
 #include "Wrappers/Window.h"
-#include <GLFW/glfw3.h>
-#include "common.h"
 
 namespace engine {
 
