@@ -5,50 +5,6 @@
 #include "Components/Components.h"
 #include "Vulkan/Camera.h"
 
-void setup_input_keyboard_system(flecs::world& world) {
-    world.system<KeyboardMovement>()
-    .kind(flecs::PreUpdate)
-    .each([](flecs::entity entity, KeyboardMovement& input_keyboard) {
-        GLFWwindow* window = entity.world().get<components::WindowComponent>()->window_ptr;
-        input_keyboard.forward = 0;
-        input_keyboard.right = 0;
-        input_keyboard.up = 0;
-        input_keyboard.look_right = 0;
-        input_keyboard.look_up = 0;
-        
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            input_keyboard.forward += 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            input_keyboard.forward -= 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            input_keyboard.right -= 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            input_keyboard.right += 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-            input_keyboard.look_up += 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            input_keyboard.look_up -= 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-            input_keyboard.look_right -= 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-            input_keyboard.look_right += 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-            input_keyboard.up -= 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-            input_keyboard.up += 1;
-        }
-    });
-}
-
 void setup_keyboard_movement(flecs::world& world) {
     world.system<KeyboardMovement, components::Transform3D, Velocity>()
     .kind(flecs::OnUpdate)

@@ -5,6 +5,8 @@
 #include <vuk/RenderGraph.hpp>
 
 #include "VkBootstrap.h"
+#include "common.h"
+#include "GLFW/glfw3.h"
 #include "backends/imgui_impl_glfw.h"
 
 namespace engine {
