@@ -2,7 +2,10 @@
 
 #include <vulkan/vulkan.h>
 
+/*
 struct VulkanRenderInfo {
-    VkCommandBuffer cmd_buffer;
+    engine::vulkan::VulkanRenderer::Frame* frame;
     VkPipelineLayout pipeline_layout;
+    engine::vulkan::VulkanRenderer* renderer;
 };
+*/

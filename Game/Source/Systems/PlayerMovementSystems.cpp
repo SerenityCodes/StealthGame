@@ -2,14 +2,17 @@
 
 #include <glm/ext/scalar_constants.hpp>
 
+#include <GLFW/glfw3.h>
+
 #include "Components/Components.h"
 #include "Vulkan/Camera.h"
 
+/*
 void setup_input_keyboard_system(flecs::world& world) {
     world.system<KeyboardMovement>()
     .kind(flecs::PreUpdate)
     .each([](flecs::entity entity, KeyboardMovement& input_keyboard) {
-        GLFWwindow* window = entity.world().get<components::WindowComponent>()->window_ptr;
+        GLFWwindow* window = *entity.world().get_mut<GLFWwindow*>();
         input_keyboard.forward = 0;
         input_keyboard.right = 0;
         input_keyboard.up = 0;
@@ -48,6 +51,7 @@ void setup_input_keyboard_system(flecs::world& world) {
         }
     });
 }
+*/
 
 void setup_keyboard_movement(flecs::world& world) {
     world.system<KeyboardMovement, components::Transform3D, Velocity>()

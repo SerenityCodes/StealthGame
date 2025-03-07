@@ -5,7 +5,6 @@
 
 #include "QueueWrapper.h"
 #include "common.h"
-#include "imgui_impl_vulkan.h"
 
 namespace engine::vulkan {
 
@@ -153,6 +152,10 @@ void SwapChain::create_frame_buffers(VkRenderPass render_pass, ArrayRef<VkFrameb
 
 size_t SwapChain::get_image_views_count() const {
     return m_images_.size();
+}
+
+const ArrayRef<VkImage>& SwapChain::get_images() const {
+    return m_images_;
 }
 
 const ArrayRef<VkImageView>& SwapChain::get_image_views() const {

@@ -23,7 +23,9 @@ using arena_vector = std::vector<T, STLArenaAllocator<T>>;
 #define MAKE_ARENA_VECTOR(arena_ptr, T) arena_vector<T>{STLArenaAllocator<T>{arena_ptr}}
 
 template <typename K, typename V>
-using arena_map = std::unordered_map<K, V, STLArenaAllocator<std::pair<const K, V>>>;
+using arena_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLArenaAllocator<std::pair<const K, V>>>;
+
+#define MAKE_ARENA_MAP(arena_ptr, K, V) arena_map<K, V>{STLArenaAllocator<std::pair<const K, V>>{arena_ptr}}
 
 #ifdef DEBUG
 #define VULKAN_ASSERT(x, format_msg, ...) if ((x) != VK_SUCCESS) \
