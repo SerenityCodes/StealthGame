@@ -1,0 +1,23 @@
+# Other
+.vscode/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user 
+*.csproj
+
+# Engine intermediate
+bin/
+bin-int/
+
+# Make
+/Makefile
+
+# CMake
+CMakeFiles/
+*.cmake
+CMakeLists.txt
+CMakeCache.txt

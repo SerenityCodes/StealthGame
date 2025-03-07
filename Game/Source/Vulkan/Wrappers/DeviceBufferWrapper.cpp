@@ -12,16 +12,16 @@ VkDeviceSize DeviceBufferWrapper::aligned_size(VkDeviceSize size, VkDeviceSize a
 }
 
 DeviceBufferWrapper::DeviceBufferWrapper(
-    VmaAllocator allocator, VkDevice device, VkDeviceSize instance_size,
+    const VulkanRenderer& renderer, VkDeviceSize instance_size,
     uint32_t instance_count, VkBufferUsageFlags flags,
     VmaAllocationCreateFlags allocation_flags,
     VkDeviceSize min_offset_alignment)
-    : m_device_(device),
-    m_allocator_(allocator),
+    : m_device_(renderer.vulkan_device()),
+    m_allocator_(renderer.vma_allocator()),
     m_alignment_size_(aligned_size(instance_size, min_offset_alignment)),
     m_buffer_size_(m_alignment_size_ * instance_count),
     m_instance_size_(instance_size) {
-    //VulkanRenderer::create_buffer(m_buffer_size_, flags, allocation_flags, allocator, &m_buffer_, &m_allocation_);
+    renderer.create_buffer(m_buffer_size_, flags, allocation_flags, &m_buffer_, &m_allocation_);
 }
 
 DeviceBufferWrapper::DeviceBufferWrapper(DeviceBufferWrapper&& other) noexcept {
@@ -53,10 +53,6 @@ DeviceBufferWrapper& DeviceBufferWrapper::operator=(
 }
 
 DeviceBufferWrapper::~DeviceBufferWrapper() {
-    // Allows a buffer to be default constructed with garbage and then replaced later
-    if (!m_device_) {
-        return;
-    }
     vkDeviceWaitIdle(m_device_);
     vmaDestroyBuffer(m_allocator_, m_buffer_, m_allocation_);
 }

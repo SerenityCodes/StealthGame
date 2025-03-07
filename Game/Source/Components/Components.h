@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include <glm/glm.hpp>
+#include "Vulkan/VulkanModel.h"
+#include "Vulkan/VulkanTexture.h"
 
 namespace components {
 
@@ -79,6 +81,15 @@ struct Transform3D {
     glm::vec3 right() const {
         return glm::normalize(glm::vec3(normal_matrix()[0]));
     }
+};
+
+struct Renderable {
+    engine::vulkan::VulkanModel* model;
+    engine::vulkan::VulkanTexture* texture;
+};
+
+struct WindowComponent {
+    GLFWwindow* window_ptr;
 };
 
 }

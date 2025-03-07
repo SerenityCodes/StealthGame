@@ -44,7 +44,6 @@ public:
     void create_swap_chain_image_views();
     void create_frame_buffers(VkRenderPass render_pass, ArrayRef<VkFramebuffer>& frame_buffers, bool is_second);
     size_t get_image_views_count() const;
-    const ArrayRef<VkImage>& get_images() const;
     const ArrayRef<VkImageView>& get_image_views() const;
 
     VkExtent2D get_swap_chain_extent() const;
