@@ -140,6 +140,7 @@ void Renderer::render() {
         vuk::present_to_one(*context, std::move(result));
         sampled_images.clear();
     }
+    context->wait_idle();
 }
 
 }
