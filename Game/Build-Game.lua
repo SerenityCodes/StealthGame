@@ -10,7 +10,7 @@ project "Game"
     "Source/Logging/**.h", "Source/Logging/**.cpp",
     "Source/Memory/**.h", "Source/Memory/**.cpp",
     "Source/Systems/**.h", "Source/Systems/**.cpp",
-    "Source/Vulkan/**.h", "Source/Vulkan/**.cpp",
+    "Source/Rendering/**.h", "Source/Rendering/**.cpp",
     "Source/App.cpp", "Source/common.h", "Source/Engine*",
     "Source/FileIO/**.h", "Source/FileIO/**.cpp",
 
@@ -53,6 +53,7 @@ project "Game"
 	  "Vendor/concurrentqueue/",
 	  "Vendor/doctest",
 	  "Vendor/fmt/include",
+	  "Vendor/flecs",
       "Vendor/glfw/include",
       "Vendor/glm/glm",
       "Vendor/imgui",

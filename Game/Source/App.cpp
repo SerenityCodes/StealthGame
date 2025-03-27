@@ -1,10 +1,8 @@
-#include <random>
+#include <utils.hpp>
+#include <vuk/Buffer.hpp>
+#include <vuk/Pipeline.hpp>
 
-#include "Systems/PlayerMovementSystems.h"
 #include "Engine.h"
-#include "Components/Components.h"
-#include "Systems/CoreEngineSystems.h"
-#include "Vulkan/Camera.h"
 
 int main() {
 	engine::StealthEngine engine;

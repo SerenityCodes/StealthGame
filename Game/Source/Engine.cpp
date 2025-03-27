@@ -2,14 +2,11 @@
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 #include "common.h"
 #include "imgui.h"
-#include "Systems/CoreEngineSystems.h"
-#include "Vulkan/VulkanRenderInfo.h"
 #include "Logging/Logger.h"
-#include "Vulkan/Renderer.h"
+#include "Rendering/Renderer.h"
 
 namespace engine {
 
@@ -22,9 +19,8 @@ StealthEngine::StealthEngine() : m_temp_arena_((Logger::Init(), default_stack_si
 
 void StealthEngine::run() {
     ENGINE_LOG_INFO("Engine starting...")
-    Renderer renderer;
+    Renderer renderer{m_world_};
     renderer.render();
-    // Join Threads Here
 }
 
 flecs::world& StealthEngine::get_world() {

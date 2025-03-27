@@ -10,9 +10,13 @@
 #include "backends/imgui_impl_glfw.h"
 #include <imgui.h>
 
+#include <vuk/Partials.hpp>
+
+#include "flecs.h"
+
 namespace engine {
 
-Renderer::Renderer() : window(1200, 800, "Game") {
+Renderer::Renderer(flecs::world& world) : m_world_(world), window(1200, 800, "Game") {
     vkb::InstanceBuilder instance_builder;
     instance_builder.request_validation_layers()
         .set_app_name("Stealth Game")
@@ -105,15 +109,22 @@ Renderer::Renderer() : window(1200, 800, "Game") {
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForVulkan(window, true);
     imgui_data = util::ImGui_ImplVuk_Init(*superframe_allocator);
+
+    vuk::PipelineBaseCreateInfo create_info;
+    create_info.add_spirv(util::read_spirv("Shaders/global.frag.spv"), "Global Fragment Shader");
+    create_info.add_spirv(util::read_spirv("Shaders/global.vert.spv"), "Global Vertex Shader");
+    context->create_named_pipeline("cube", create_info);
+    
 }
 
 void Renderer::render() {
     vuk::Compiler compiler;
-    
-    while (!window.should_close()) {
+    bool should_continue = true;
+    while (!window.should_close() && should_continue) {
         Window::glfw_poll_events();
         while (is_suspended) {
             glfwWaitEvents();

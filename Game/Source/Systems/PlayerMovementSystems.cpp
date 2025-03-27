@@ -3,7 +3,7 @@
 #include <glm/ext/scalar_constants.hpp>
 
 #include "Components/Components.h"
-#include "Vulkan/Camera.h"
+#include "Rendering/Camera.h"
 
 void setup_keyboard_movement(flecs::world& world) {
     world.system<KeyboardMovement, components::Transform3D, Velocity>()

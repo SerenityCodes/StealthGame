@@ -7,7 +7,8 @@
 
 #include "../../Vendor/vk-bootstrap/VkBootstrap.h"
 #include "Containers/ObjectHolder.h"
-#include "Wrappers/Window.h"
+#include "Window.h"
+#include "flecs.h"
 
 namespace engine {
 
@@ -20,7 +21,12 @@ struct VulkanHandles {
     VkQueue transfer_queue;
 };
 
+struct RenderHandles {
+    
+};
+
 class Renderer {
+    flecs::world& m_world_;
 public:
     Window window;
     VulkanHandles handle_struct;
@@ -33,10 +39,11 @@ public:
     vuk::Unique<std::array<VkSemaphore, 3>> render_complete_semaphores;
     plf::colony<vuk::SampledImage> sampled_images;
     vuk::SingleSwapchainRenderBundle bundle;
+    vuk::Unique<vuk::Buffer> cube_vertices, cube_indices;
     
     bool is_suspended = false;
 
-    Renderer();
+    Renderer(flecs::world& world);
     ~Renderer() = default;
 
     void render();
