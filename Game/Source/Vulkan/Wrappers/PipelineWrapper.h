@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "Shader.h"
 #include "SwapChain.h"

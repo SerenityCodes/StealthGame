@@ -1,6 +1,6 @@
 ﻿#include "PlayerMovementSystems.h"
 
-#include <glm/ext/scalar_constants.hpp>
+#include <ext/scalar_constants.hpp>
 
 #include "Components/Components.h"
 #include "Vulkan/Camera.h"

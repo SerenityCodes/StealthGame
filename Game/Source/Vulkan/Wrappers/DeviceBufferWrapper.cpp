@@ -2,6 +2,9 @@
 
 #include "../../../Vendor/vma/include/vk_mem_alloc.h"
 
+#define VMA_STATIC_VULKAN_FUNCTIONS VK_TRUE
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS VK_TRUE
+
 namespace engine::vulkan {
 
 VkDeviceSize DeviceBufferWrapper::aligned_size(VkDeviceSize size, VkDeviceSize alignment) {

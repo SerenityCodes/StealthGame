@@ -3,6 +3,9 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 
+#define VMA_STATIC_VULKAN_FUNCTIONS VK_TRUE
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS VK_TRUE
+
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
@@ -15,8 +18,7 @@ bool is_device_suitable(VkPhysicalDevice physical_device) {
     vkGetPhysicalDeviceProperties(physical_device, &device_properties);
     vkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
-    return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-           device_features.geometryShader && device_features.samplerAnisotropy;
+    return device_features.geometryShader && device_features.samplerAnisotropy;
 }
 
 bool check_device_extension_support(Arena& temp_arena, VkPhysicalDevice device) {

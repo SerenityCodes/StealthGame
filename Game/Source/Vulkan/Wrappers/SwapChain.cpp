@@ -1,7 +1,7 @@
 ﻿#include "SwapChain.h"
 
 #include <stdexcept>
-#include <glm/common.hpp>
+#include <common.hpp>
 
 #include "QueueWrapper.h"
 #include "common.h"

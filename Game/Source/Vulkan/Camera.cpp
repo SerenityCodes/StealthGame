@@ -1,6 +1,6 @@
 ﻿#include <Vulkan/Camera.h>
 
-#include <glm/ext/matrix_clip_space.hpp>
+#include <ext/matrix_clip_space.hpp>
 
 #include "common.h"
 

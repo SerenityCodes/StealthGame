@@ -123,6 +123,8 @@ arena_vector<Shader> parse_and_compile_shaders(Arena& temp_arena, io::Folder& pa
         io::RawFile shader_file = path.read_file(i);
         arena_string extension = shader_file.get_file_extension();
         arena_string& full_path = shader_file.get_file_path();
+        ENGINE_LOG_INFO("Parsing shader %s", full_path);
+        ENGINE_LOG_INFO("%s", extension);
         bool is_vertex = extension == "vert";
         bool is_fragment = extension == "frag";
         if (is_vertex || is_fragment) {
@@ -135,7 +137,7 @@ arena_vector<Shader> parse_and_compile_shaders(Arena& temp_arena, io::Folder& pa
             shader->setStrings(&raw_data, 1);
             shader->setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 450);
             shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
-            shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_3);
+            shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
             if (!shader->parse(&resources, 450, false, messages)) {
                 ENGINE_LOG_ERROR("Shader compilation failed for {}. Shader log: \n{}\n", full_path, shader->getInfoLog());
                 continue;

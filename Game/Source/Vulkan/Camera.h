@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Camera {
     glm::mat4 projection{1.f};
